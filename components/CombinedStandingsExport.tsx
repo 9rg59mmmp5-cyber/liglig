@@ -11,6 +11,7 @@ interface CombinedStandingsExportProps {
 
 const CombinedStandingsExport: React.FC<CombinedStandingsExportProps> = ({ onClose }) => {
   const [isDownloading, setIsDownloading] = useState(false);
+  const [isSendingTelegram, setIsSendingTelegram] = useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
   // Helper to get data for a league
@@ -38,48 +39,89 @@ const CombinedStandingsExport: React.FC<CombinedStandingsExportProps> = ({ onClo
   // Determine the week to display (max of both or specific)
   const displayWeek = Math.max(dataA.currentWeek, dataB.currentWeek);
 
+  const handleSendTelegram = async () => {
+    if (!exportRef.current || isSendingTelegram) return;
+    setIsSendingTelegram(true);
+
+    try {
+      // Create canvas first
+      await new Promise(resolve => setTimeout(resolve, 500));
+      const canvas = await html2canvas(exportRef.current, {
+        scale: 3,
+        useCORS: true,
+        backgroundColor: '#450a0a',
+        logging: false,
+        letterRendering: true,
+        onclone: (_clonedDoc, element) => {
+          const node = element.querySelector('#combined-export') as HTMLElement;
+          if (node) node.style.height = 'auto';
+        }
+      });
+
+      const dataUrl = canvas.toDataURL('image/png');
+      
+      const response = await fetch('/api/send-telegram', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          image: dataUrl,
+          chatIds: ['860174169', '-1001794193133', '818845314']
+        })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert("Telegram'a başarıyla gönderildi!");
+      } else {
+        throw new Error(data.error || "Gönderilemedi");
+      }
+    } catch (err: any) {
+      console.error("Telegram export failed", err);
+      alert("Telegram hatası: " + err.message);
+    } finally {
+      setIsSendingTelegram(false);
+    }
+  };
+
   const handleDownload = async () => {
     if (!exportRef.current || isDownloading) return;
     setIsDownloading(true);
 
     try {
-      // Wait for fonts/images
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // Fix for shifting: ensure capture happens with stable settings
+      window.scrollTo(0, 0); 
+      
+      await new Promise(resolve => setTimeout(resolve, 800));
 
       const canvas = await html2canvas(exportRef.current, {
-        scale: 3, // Higher scale for better quality
+        scale: 3,
         useCORS: true,
         backgroundColor: '#450a0a',
         logging: false,
         letterRendering: true,
         allowTaint: true,
+        scrollX: 0,
+        scrollY: -window.scrollY,
         onclone: (_clonedDoc, element) => {
           const exportNode = element.querySelector('#combined-export') as HTMLElement;
           if (exportNode) {
-            exportNode.style.height = 'auto';
-            exportNode.style.minHeight = '1350px';
+            exportNode.style.height = '1350px';
+            exportNode.style.width = '1080px';
+            exportNode.style.position = 'relative';
+            exportNode.style.top = '0';
+            exportNode.style.left = '0';
+            exportNode.style.margin = '0';
           }
 
-          // Fix all text elements - prevent shifting and clipping
+          // Fix all text elements
           const allTextEls = element.querySelectorAll('*');
           allTextEls.forEach((el) => {
             const htmlEl = el as HTMLElement;
             htmlEl.style.fontVariantLigatures = 'none';
-            htmlEl.style.textRendering = 'optimizeLegibility';
-            
             if (htmlEl.classList.contains('truncate') || htmlEl.tagName === 'DIV') {
                htmlEl.style.overflow = 'visible';
                htmlEl.style.whiteSpace = 'nowrap';
-               htmlEl.style.textOverflow = 'clip';
             }
-          });
-
-          // Ensure rows are consistently aligned in the clone
-          const rows = element.querySelectorAll('.export-row');
-          rows.forEach((row) => {
-            (row as HTMLElement).style.display = 'flex';
-            (row as HTMLElement).style.alignItems = 'center';
-            (row as HTMLElement).style.height = '56px'; // Explicit height in clone
           });
         }
       });
@@ -168,6 +210,14 @@ const CombinedStandingsExport: React.FC<CombinedStandingsExportProps> = ({ onClo
         <div className="w-full flex justify-between items-center mb-4 text-white">
             <h2 className="text-xl font-bold">1. Amatör Ortak Puan Durumu</h2>
             <div className="flex gap-2">
+                <button 
+                    onClick={handleSendTelegram}
+                    disabled={isSendingTelegram}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition-colors"
+                >
+                    {isSendingTelegram ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Share className="w-5 h-5" />}
+                    Telegram'a At
+                </button>
                 <button 
                     onClick={handleDownload}
                     disabled={isDownloading}

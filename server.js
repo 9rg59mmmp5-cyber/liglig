@@ -8,7 +8,45 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = 5000;
 
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'dist')));
+
+app.post('/api/send-telegram', async (req, res) => {
+  const { image, chatIds } = req.body;
+  const token = "5747202724:AAHLfOnWPZE0TAyvFO0vEaJUYyVYYOOodC4";
+
+  if (!image || !chatIds || !Array.isArray(chatIds)) {
+    return res.status(400).json({ success: false, error: 'Eksik veri' });
+  }
+
+  try {
+    // Convert base64 to buffer
+    const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    const results = [];
+    for (const chatId of chatIds) {
+      const formData = new FormData();
+      const blob = new Blob([buffer], { type: 'image/png' });
+      formData.append('chat_id', chatId);
+      formData.append('photo', blob, 'puan-durumu.png');
+      formData.append('caption', '📊 Karabük 1. Amatör Lig Güncel Puan Durumu');
+
+      const response = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+      results.push({ chatId, success: data.ok, error: data.description });
+    }
+
+    res.json({ success: true, results });
+  } catch (error) {
+    console.error('Telegram error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
 
 app.get('/api/tff-sync', async (req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
