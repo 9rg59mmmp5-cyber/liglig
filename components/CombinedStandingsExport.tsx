@@ -203,14 +203,14 @@ const CombinedStandingsExport: React.FC<CombinedStandingsExportProps> = ({ onClo
                 }}
             >
                 {/* Header */}
-                <div className="text-center mb-10">
+                <div className="text-center mb-6">
                     <h2 className="text-white/80 text-3xl font-medium tracking-widest uppercase mb-2" style={{lineHeight: '1.2'}}>KARABÜK ALİ KEMAL ERGÜVEN 1.AMATÖR LİGİ</h2>
                     <h3 className="text-white/60 text-2xl font-bold tracking-widest uppercase mb-6" style={{lineHeight: '1.2'}}>{displayWeek}. HAFTA</h3>
                     <h1 className="text-white text-8xl font-black uppercase tracking-tighter drop-shadow-2xl" style={{lineHeight: '1.1', paddingBottom: '12px'}}>PUAN DURUMU</h1>
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 flex flex-col justify-center gap-10">
+                <div className="flex-1 flex flex-col justify-start gap-4">
                     <RenderTable title="A GRUBU" standings={dataA.standings} />
                     <RenderTable title="B GRUBU" standings={dataB.standings} />
                 </div>
