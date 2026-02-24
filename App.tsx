@@ -34,17 +34,29 @@ const App: React.FC = () => {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // Load fixtures from local storage or constants when league changes
+  // Bozuk/şişmiş veri tespiti: TFF sync birikimiyle 100+ maç eklenmiş olabilir
   useEffect(() => {
+    const league = LEAGUES[activeLeagueId];
+    const maxExpected = league.fixtures.length + league.teams.length * 2; // makul üst sınır
     const savedFixtures = localStorage.getItem(`fixtures_${activeLeagueId}`);
     if (savedFixtures) {
       try {
-        setFixtures(JSON.parse(savedFixtures));
+        const parsed: Match[] = JSON.parse(savedFixtures);
+        if (parsed.length > maxExpected) {
+          // Bozuk veri — sıfırla ve TFF'i yeniden sync'e zorla
+          console.warn(`[TFF] Bozuk fixtures (${parsed.length} maç > beklenen ${maxExpected}), temizleniyor.`);
+          localStorage.removeItem(`fixtures_${activeLeagueId}`);
+          localStorage.removeItem(`tff_last_auto_${activeLeagueId}`);
+          setFixtures([...league.fixtures]);
+        } else {
+          setFixtures(parsed);
+        }
       } catch (e) {
         console.error("Failed to parse saved fixtures", e);
-        setFixtures([...LEAGUES[activeLeagueId].fixtures]);
+        setFixtures([...league.fixtures]);
       }
     } else {
-      setFixtures([...LEAGUES[activeLeagueId].fixtures]);
+      setFixtures([...league.fixtures]);
     }
   }, [activeLeagueId]);
 
@@ -58,7 +70,7 @@ const App: React.FC = () => {
     }
   };
 
-  // TFF senkronizasyon handler
+  // TFF senkronizasyon handler (manuel tam güncelleme — tüm haftalar)
   const handleTFFSync = useCallback(async () => {
     if (isTFFSyncing) return;
     setIsTFFSyncing(true);
@@ -70,14 +82,16 @@ const App: React.FC = () => {
         throw new Error(data?.error || 'TFF verisi alınamadı');
       }
 
-      // Puan durumunu eşleştir ve state'e yaz
-      const mappedStandings = mapTFFStandingsToTeams(data.standings, currentLeague.teams);
+      // Puan durumu doğrudan TFF'den
+      const mappedStandings = mapTFFStandingsToTeams(data.standings, currentLeague.teams, activeLeagueId);
       setTffStandings(mappedStandings);
 
-      // Fikstürleri güncelle (oynanan maç sonuçlarını ekle)
-      const updatedFixtures = mapTFFFixturesToMatches(data.fixtures, currentLeague.teams, fixtures);
+      // Fixtures: constants'taki temiz listeyi base al — birikmiş localStorage değil
+      const baseFixtures: Match[] = [...currentLeague.fixtures];
+      const updatedFixtures = mapTFFFixturesToMatches(data.fixtures, currentLeague.teams, baseFixtures, activeLeagueId);
       setFixtures(updatedFixtures);
       localStorage.setItem(`fixtures_${activeLeagueId}`, JSON.stringify(updatedFixtures));
+      localStorage.setItem(`tff_last_auto_${activeLeagueId}`, String(Date.now()));
 
       const syncTime = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
       setTffLastSync(syncTime);
@@ -88,7 +102,7 @@ const App: React.FC = () => {
     } finally {
       setIsTFFSyncing(false);
     }
-  }, [activeLeagueId, isTFFSyncing, currentLeague.teams, fixtures]);
+  }, [activeLeagueId, isTFFSyncing, currentLeague.teams, currentLeague.fixtures]);
 
   // Lig değişince TFF state'i sıfırla
   useEffect(() => {
@@ -96,6 +110,41 @@ const App: React.FC = () => {
     setTffLastSync(null);
     setTffSyncError(null);
   }, [activeLeagueId]);
+
+  // TFF destekli ligde otomatik çek (lig açılınca, 5 dk caching)
+  useEffect(() => {
+    if (!hasTFFSync(activeLeagueId)) return;
+
+    const cacheKey = `tff_last_auto_${activeLeagueId}`;
+    const lastAuto = parseInt(localStorage.getItem(cacheKey) || '0', 10);
+    if (Date.now() - lastAuto < 5 * 60 * 1000) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const { fetchTFFDataQuick, mapTFFStandingsToTeams: mapStandings, mapTFFFixturesToMatches: mapFixtures } = await import('./services/tffService');
+        if (cancelled) return;
+        const data = await fetchTFFDataQuick(activeLeagueId);
+        if (cancelled || !data?.success) return;
+
+        // Puan durumunu TFF'den doğrudan al
+        const mappedStandings = mapStandings(data.standings, currentLeague.teams, activeLeagueId);
+        setTffStandings(mappedStandings);
+
+        // Fixtures: birikmiş localStorage DEĞİL, constants'taki temiz listeyi base al
+        // Bu sayede her sync'te sıfırdan doğru fixture listesi oluşur
+        const baseFixtures: Match[] = [...currentLeague.fixtures];
+        const updatedFixtures = mapFixtures(data.fixtures, currentLeague.teams, baseFixtures, activeLeagueId);
+        setFixtures(updatedFixtures);
+        localStorage.setItem(`fixtures_${activeLeagueId}`, JSON.stringify(updatedFixtures));
+        localStorage.setItem(cacheKey, String(Date.now()));
+
+        const syncTime = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+        setTffLastSync(syncTime);
+      } catch (_) { /* otomatik çekme hatası sessizce geç */ }
+    })();
+    return () => { cancelled = true; };
+  }, [activeLeagueId, currentLeague.teams, currentLeague.fixtures]);
 
   // Recalculate standings — TFF verisi varsa onu kullan
   const liveTeams = useMemo(() => {

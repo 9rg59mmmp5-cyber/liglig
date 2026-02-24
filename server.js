@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = 5000;
 
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '20mb' }));
 app.use(express.static(path.join(__dirname, 'dist')));
 
 app.post('/api/send-telegram', async (req, res) => {
