@@ -44,31 +44,42 @@ const CombinedStandingsExport: React.FC<CombinedStandingsExportProps> = ({ onClo
 
     try {
       // Wait for fonts/images
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       const canvas = await html2canvas(exportRef.current, {
-        scale: 2,
+        scale: 3, // Higher scale for better quality
         useCORS: true,
         backgroundColor: '#450a0a',
         logging: false,
+        letterRendering: true,
+        allowTaint: true,
         onclone: (_clonedDoc, element) => {
-          // Fix all text elements - remove any transforms/padding that cause clipping
+          const exportNode = element.querySelector('#combined-export') as HTMLElement;
+          if (exportNode) {
+            exportNode.style.height = 'auto';
+            exportNode.style.minHeight = '1350px';
+          }
+
+          // Fix all text elements - prevent shifting and clipping
           const allTextEls = element.querySelectorAll('*');
           allTextEls.forEach((el) => {
             const htmlEl = el as HTMLElement;
-            htmlEl.style.paddingTop = '0';
-            htmlEl.style.paddingBottom = '0';
-            htmlEl.style.lineHeight = '1.2';
-            htmlEl.style.overflow = 'visible';
-            htmlEl.style.transform = 'none';
+            htmlEl.style.fontVariantLigatures = 'none';
+            htmlEl.style.textRendering = 'optimizeLegibility';
+            
+            if (htmlEl.classList.contains('truncate') || htmlEl.tagName === 'DIV') {
+               htmlEl.style.overflow = 'visible';
+               htmlEl.style.whiteSpace = 'nowrap';
+               htmlEl.style.textOverflow = 'clip';
+            }
           });
-          // Fix row height to accommodate text properly
+
+          // Ensure rows are consistently aligned in the clone
           const rows = element.querySelectorAll('.export-row');
-          rows.forEach((el) => {
-            const htmlEl = el as HTMLElement;
-            htmlEl.style.height = '60px';
-            htmlEl.style.display = 'flex';
-            htmlEl.style.alignItems = 'center';
+          rows.forEach((row) => {
+            (row as HTMLElement).style.display = 'flex';
+            (row as HTMLElement).style.alignItems = 'center';
+            (row as HTMLElement).style.height = '56px'; // Explicit height in clone
           });
         }
       });
@@ -101,10 +112,10 @@ const CombinedStandingsExport: React.FC<CombinedStandingsExportProps> = ({ onClo
   };
 
   const RenderTable = ({ title, standings }: { title: string, standings: Team[] }) => (
-    <div className="mb-6">
-      <div className="flex items-center justify-between mb-2 px-2">
-         <h3 className="text-4xl font-black text-white uppercase tracking-tighter" style={{lineHeight: '1.2'}}>{title}</h3>
-         <div className="flex gap-4 text-white/60 font-bold text-xl uppercase tracking-widest" style={{lineHeight: '1.2'}}>
+    <div className="mb-10">
+      <div className="flex items-center justify-between mb-4 px-2 border-b-2 border-white/20 pb-2">
+         <h3 className="text-4xl font-black text-white uppercase tracking-tighter" style={{lineHeight: '1'}}>{title}</h3>
+         <div className="flex gap-4 text-white/50 font-bold text-xl uppercase tracking-widest" style={{lineHeight: '1'}}>
             <span className="w-8 text-center">O</span>
             <span className="w-8 text-center">G</span>
             <span className="w-8 text-center">B</span>
@@ -112,35 +123,36 @@ const CombinedStandingsExport: React.FC<CombinedStandingsExportProps> = ({ onClo
             <span className="w-8 text-center">A</span>
             <span className="w-8 text-center">Y</span>
             <span className="w-10 text-center">AV</span>
-            <span className="w-10 text-center text-white">P</span>
+            <span className="w-10 text-center text-white/90">P</span>
          </div>
       </div>
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2.5">
         {standings.map((team, index) => {
             let rankColor = "bg-slate-700";
             if (index === 0) rankColor = "bg-green-600"; // Champion
-            if (index === standings.length - 1) rankColor = "bg-red-600"; // Relegation
+            if (index === 1) rankColor = "bg-blue-600"; // Playoff
+            if (index >= standings.length - 2) rankColor = "bg-red-600"; // Relegation danger
 
             return (
-                <div key={team.id} className="export-row flex items-center h-16 bg-gradient-to-r from-black/40 to-black/20 backdrop-blur-sm border-b border-white/5 px-2">
+                <div key={team.id} className="export-row flex items-center h-14 bg-white/5 border-b border-white/10 px-2 rounded-lg">
                     {/* Rank */}
-                    <div className={`${rankColor} w-10 h-10 flex items-center justify-center text-white font-black text-2xl rounded shadow-lg shrink-0 mr-3`} style={{lineHeight: '1'}}>
+                    <div className={`${rankColor} w-9 h-9 flex items-center justify-center text-white font-black text-xl rounded shadow-lg shrink-0 mr-4`} style={{lineHeight: '1'}}>
                         {index + 1}
                     </div>
                     {/* Team Name */}
-                    <div className="flex-1 text-white font-bold text-2xl uppercase tracking-tight truncate pr-2" style={{lineHeight: '1.2'}}>
+                    <div className="flex-1 text-white font-bold text-2xl uppercase tracking-tight whitespace-nowrap overflow-hidden" style={{lineHeight: '1'}}>
                         {team.name}
                     </div>
                     {/* Stats */}
-                    <div className="flex gap-4 text-white font-bold text-2xl" style={{lineHeight: '1.2'}}>
-                        <span className="w-8 text-center text-white/80">{team.played}</span>
-                        <span className="w-8 text-center text-white/80">{team.won}</span>
-                        <span className="w-8 text-center text-white/80">{team.drawn}</span>
-                        <span className="w-8 text-center text-white/80">{team.lost}</span>
-                        <span className="w-8 text-center text-white/80">{team.gf}</span>
-                        <span className="w-8 text-center text-white/80">{team.ga}</span>
-                        <span className="w-10 text-center text-white/80">{team.gd}</span>
-                        <span className="w-10 text-center text-yellow-400 font-black bg-black/30 rounded flex items-center justify-center">{team.pts}</span>
+                    <div className="flex gap-4 text-white font-bold text-2xl" style={{lineHeight: '1'}}>
+                        <span className="w-8 text-center text-white/70">{team.played}</span>
+                        <span className="w-8 text-center text-white/70">{team.won}</span>
+                        <span className="w-8 text-center text-white/70">{team.drawn}</span>
+                        <span className="w-8 text-center text-white/70">{team.lost}</span>
+                        <span className="w-8 text-center text-white/70">{team.gf}</span>
+                        <span className="w-8 text-center text-white/70">{team.ga}</span>
+                        <span className="w-10 text-center text-white/70">{team.gd}</span>
+                        <span className="w-10 text-center text-yellow-400 font-black bg-black/40 rounded flex items-center justify-center shadow-inner">{team.pts}</span>
                     </div>
                 </div>
             );
@@ -174,14 +186,14 @@ const CombinedStandingsExport: React.FC<CombinedStandingsExportProps> = ({ onClo
         </div>
 
         {/* Preview Container (Scaled down for view) */}
-        <div className="overflow-auto max-h-[80vh] border border-white/10 rounded-xl shadow-2xl">
+        <div className="overflow-auto max-h-[80vh] border border-white/10 rounded-xl shadow-2xl bg-[#450a0a]">
             {/* The Export Node */}
             <div 
                 id="combined-export"
                 ref={exportRef}
                 style={{
                     width: '1080px',
-                    height: '1350px',
+                    minHeight: '1350px',
                     background: 'linear-gradient(180deg, #450a0a 0%, #7f1d1d 40%, #000000 100%)',
                     padding: '60px',
                     display: 'flex',
@@ -194,11 +206,11 @@ const CombinedStandingsExport: React.FC<CombinedStandingsExportProps> = ({ onClo
                 <div className="text-center mb-10">
                     <h2 className="text-white/80 text-3xl font-medium tracking-widest uppercase mb-2" style={{lineHeight: '1.2'}}>KARABÜK ALİ KEMAL ERGÜVEN 1.AMATÖR LİGİ</h2>
                     <h3 className="text-white/60 text-2xl font-bold tracking-widest uppercase mb-6" style={{lineHeight: '1.2'}}>{displayWeek}. HAFTA</h3>
-                    <h1 className="text-white text-8xl font-black uppercase tracking-tighter drop-shadow-2xl" style={{lineHeight: '1.1', paddingBottom: '8px'}}>PUAN DURUMU</h1>
+                    <h1 className="text-white text-8xl font-black uppercase tracking-tighter drop-shadow-2xl" style={{lineHeight: '1.1', paddingBottom: '12px'}}>PUAN DURUMU</h1>
                 </div>
 
                 {/* Content */}
-                <div className="flex-1 flex flex-col justify-center gap-8">
+                <div className="flex-1 flex flex-col justify-center gap-10">
                     <RenderTable title="A GRUBU" standings={dataA.standings} />
                     <RenderTable title="B GRUBU" standings={dataB.standings} />
                 </div>
