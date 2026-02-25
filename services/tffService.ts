@@ -53,7 +53,9 @@ const EFLANI_KULUP_MAP: Record<number, number> = {
   12410: 11,  // Tavuk Evi Eflani Spor / ASD Eflani Spor Kulübü
   1930:  12,  // Yeniçağa Spor Kulübü
   95:    13,  // Bartınspor
-  13706: 14,  // Kırşehir Yetişen Yıldızlar Spor Kulübü (TFF kulupID doğrulandı)
+  13706: 14,  // Kırşehir Yetişen Yıldızlar Spor Kulübü
+  3622:  15,  // Samsun Büyükşehir Belediyespor
+  2562:  16,  // Gümüşhanespor
 };
 
 const KULUP_MAPS: Record<string, Record<number, number>> = {

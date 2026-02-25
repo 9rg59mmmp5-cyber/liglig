@@ -117,20 +117,20 @@ const KARABUK_FIXTURES = [
 // --- TAVUK EVİ EFLANİ SPOR DATA (BAL 4. GRUP) ---
 // Week 16 Standings
 const EFLANI_TEAMS = [
-  { id: 1, name: "Çarşambaspor", played: 16, won: 12, drawn: 3, lost: 1, gf: 33, ga: 7, gd: 26, pts: 39, form: [] },
-  { id: 2, name: "Çankırı Futbol SK", played: 16, won: 12, drawn: 2, lost: 2, gf: 35, ga: 11, gd: 24, pts: 38, form: [] },
-  { id: 3, name: "Ladik Belediyespor", played: 16, won: 9, drawn: 5, lost: 2, gf: 24, ga: 12, gd: 12, pts: 32, form: [] },
-  { id: 4, name: "Sorgun Belediyespor", played: 16, won: 8, drawn: 5, lost: 3, gf: 25, ga: 15, gd: 10, pts: 29, form: [] },
-  { id: 5, name: "Devrek Belediyespor", played: 16, won: 7, drawn: 3, lost: 6, gf: 27, ga: 16, gd: 11, pts: 24, form: [] },
-  { id: 6, name: "1930 Bafra Spor", played: 16, won: 7, drawn: 3, lost: 6, gf: 19, ga: 20, gd: -1, pts: 24, form: [] },
-  { id: 7, name: "Turhal 60 Futbol SK", played: 16, won: 5, drawn: 7, lost: 4, gf: 26, ga: 17, gd: 9, pts: 22, form: [] },
-  { id: 8, name: "Sinopspor", played: 16, won: 5, drawn: 5, lost: 6, gf: 19, ga: 19, gd: 0, pts: 20, form: [] },
-  { id: 9, name: "AVS Çaycuma Spor Kulübü", played: 16, won: 6, drawn: 2, lost: 8, gf: 21, ga: 27, gd: -6, pts: 20, form: [] },
-  { id: 10, name: "Merzifonspor", played: 16, won: 5, drawn: 4, lost: 7, gf: 15, ga: 21, gd: -6, pts: 19, form: [] },
-  { id: 11, name: "Tavuk Evi Eflani Spor Kulübü", played: 16, won: 3, drawn: 7, lost: 6, gf: 18, ga: 23, gd: -5, pts: 16, form: [] },
-  { id: 12, name: "Yeniçağa Spor Kulübü", played: 16, won: 2, drawn: 3, lost: 11, gf: 14, ga: 33, gd: -19, pts: 9, form: [] },
-  { id: 13, name: "Bartınspor", played: 16, won: 2, drawn: 3, lost: 11, gf: 10, ga: 29, gd: -19, pts: 9, form: [] },
-  { id: 14, name: "Kırşehir Yetişen Yıldızlar Spor", played: 16, won: 2, drawn: 2, lost: 12, gf: 14, ga: 50, gd: -36, pts: 8, form: [] },
+  { id: 1, name: "Çarşambaspor", played: 17, won: 13, drawn: 3, lost: 1, gf: 35, ga: 7, gd: 28, pts: 42, form: [] },
+  { id: 2, name: "Çankırı Futbol SK", played: 17, won: 12, drawn: 2, lost: 3, gf: 35, ga: 13, gd: 22, pts: 38, form: [] },
+  { id: 3, name: "Ladik Belediyespor", played: 17, won: 9, drawn: 6, lost: 2, gf: 26, ga: 14, gd: 12, pts: 33, form: [] },
+  { id: 4, name: "Sorgun Belediyespor", played: 17, won: 9, drawn: 5, lost: 3, gf: 27, ga: 15, gd: 12, pts: 32, form: [] },
+  { id: 5, name: "Devrek Belediyespor", played: 17, won: 8, drawn: 3, lost: 6, gf: 29, ga: 17, gd: 12, pts: 27, form: [] },
+  { id: 6, name: "1930 Bafra Spor", played: 17, won: 7, drawn: 3, lost: 7, gf: 19, ga: 22, gd: -3, pts: 24, form: [] },
+  { id: 7, name: "Turhal 60 Futbol SK", played: 17, won: 5, drawn: 8, lost: 4, gf: 28, ga: 19, gd: 9, pts: 23, form: [] },
+  { id: 10, name: "Merzifonspor", played: 17, won: 6, drawn: 4, lost: 7, gf: 17, ga: 22, gd: -5, pts: 22, form: [] },
+  { id: 8, name: "Sinopspor", played: 17, won: 5, drawn: 5, lost: 7, gf: 20, ga: 21, gd: -1, pts: 20, form: [] },
+  { id: 9, name: "AVS Çaycuma Spor Kulübü", played: 17, won: 6, drawn: 2, lost: 9, gf: 22, ga: 29, gd: -7, pts: 20, form: [] },
+  { id: 11, name: "Tavuk Evi Eflani Spor Kulübü", played: 17, won: 4, drawn: 7, lost: 6, gf: 20, ga: 23, gd: -3, pts: 19, form: [] },
+  { id: 12, name: "Yeniçağa Spor Kulübü", played: 17, won: 3, drawn: 3, lost: 11, gf: 16, ga: 33, gd: -17, pts: 12, form: [] },
+  { id: 13, name: "Bartınspor", played: 17, won: 2, drawn: 3, lost: 12, gf: 10, ga: 31, gd: -21, pts: 9, form: [] },
+  { id: 14, name: "Kırşehir Yetişen Yıldızlar Spor", played: 17, won: 2, drawn: 2, lost: 13, gf: 14, ga: 52, gd: -38, pts: 8, form: [] },
 ];
 
 const EFLANI_FIXTURES = [

@@ -12,7 +12,7 @@ import { fetchTFFData, mapTFFStandingsToTeams, mapTFFFixturesToMatches, hasTFFSy
 
 const App: React.FC = () => {
   // State for active league
-  const [activeLeagueId, setActiveLeagueId] = useState<string>('karabuk');
+  const [activeLeagueId, setActiveLeagueId] = useState<string>('eflani');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showCombinedExport, setShowCombinedExport] = useState(false);
   const [showLeagueExport, setShowLeagueExport] = useState<'karabuk' | 'eflani' | null>(null);
