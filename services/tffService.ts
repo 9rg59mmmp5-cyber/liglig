@@ -56,6 +56,8 @@ const EFLANI_KULUP_MAP: Record<number, number> = {
   13706: 14,  // Kırşehir Yetişen Yıldızlar Spor Kulübü
   3622:  15,  // Samsun Büyükşehir Belediyespor
   2562:  16,  // Gümüşhanespor
+  16578: 15,  // Samsun Büyükşehir Belediyespor (Alternatif ID)
+  14988: 16,  // Gümüşhanespor (Alternatif ID)
 };
 
 const KULUP_MAPS: Record<string, Record<number, number>> = {

@@ -135,13 +135,14 @@ const EFLANI_TEAMS = [
 
 const EFLANI_FIXTURES = [
   // Week 17
-  { id: 'e17_1', week: 17, homeTeamId: 13, awayTeamId: 11, homeScore: null, awayScore: null, isPlayed: false }, // Bartınspor - ASD Eflani Spor
-  { id: 'e17_2', week: 17, homeTeamId: 6, awayTeamId: 4, homeScore: null, awayScore: null, isPlayed: false }, // 1930 Bafraspor - Sorgun Belediyespor
-  { id: 'e17_3', week: 17, homeTeamId: 2, awayTeamId: 1, homeScore: null, awayScore: null, isPlayed: false }, // Çankırı Futbol SK - Çarşambaspor
-  { id: 'e17_4', week: 17, homeTeamId: 12, awayTeamId: 14, homeScore: null, awayScore: null, isPlayed: false }, // Yeniçağa Spor - Kırşehir Yetişen Yıldızlar
-  { id: 'e17_5', week: 17, homeTeamId: 8, awayTeamId: 5, homeScore: null, awayScore: null, isPlayed: false }, // Sinopspor - Devrek Belediyespor
-  { id: 'e17_6', week: 17, homeTeamId: 9, awayTeamId: 10, homeScore: null, awayScore: null, isPlayed: false }, // AVS Çaycumaspor - Merzifonspor
-  { id: 'e17_7', week: 17, homeTeamId: 3, awayTeamId: 7, homeScore: null, awayScore: null, isPlayed: false }, // Ladik Belediyespor - Turhal 60 Futbol SK
+  { id: 'e17_1', week: 17, homeTeamId: 13, awayTeamId: 11, homeScore: 0, awayScore: 2, isPlayed: true }, // Bartınspor 0-2 Eflani
+  { id: 'e17_2', week: 17, homeTeamId: 6, awayTeamId: 4, homeScore: 2, awayScore: 1, isPlayed: true }, // Bafra 2-1 Sorgun
+  { id: 'e17_3', week: 17, homeTeamId: 2, awayTeamId: 1, homeScore: 2, awayScore: 1, isPlayed: true }, // Çankırı 2-1 Çarşamba
+  { id: 'e17_4', week: 17, homeTeamId: 12, awayTeamId: 14, homeScore: 2, awayScore: 1, isPlayed: true }, // Yeniçağa 2-1 Kırşehir
+  { id: 'e17_5', week: 17, homeTeamId: 8, awayTeamId: 5, homeScore: 0, awayScore: 1, isPlayed: true }, // Sinop 0-1 Devrek
+  { id: 'e17_6', week: 17, homeTeamId: 9, awayTeamId: 10, homeScore: 1, awayScore: 2, isPlayed: true }, // Çaycuma 1-2 Merzifon
+  { id: 'e17_7', week: 17, homeTeamId: 3, awayTeamId: 7, homeScore: 1, awayScore: 0, isPlayed: true }, // Ladik 1-0 Turhal
+  { id: 'e17_8', week: 17, homeTeamId: 15, awayTeamId: 16, homeScore: 1, awayScore: 1, isPlayed: true }, // Samsun 1-1 Gümüşhane (Missing match)
 
   // Week 18
   { id: 'e18_1', week: 18, homeTeamId: 11, awayTeamId: 9, homeScore: null, awayScore: null, isPlayed: false }, // ASD Eflani Spor - AVS Çaycumaspor
