@@ -1,12 +1,22 @@
 import { Team, Match } from '../types';
 
 // ─── TFF Lig Konfigürasyonu ────────────────────────────────────────────────────
-const LEAGUE_TFF_CONFIG: Record<string, { grupID: string; pageID: string; maxHafta: number }> = {
-  'karabuk': { grupID: '2785', pageID: '971',  maxHafta: 30 }, // Nesine 3. Lig Grup 03
-  'eflani':  { grupID: '3304', pageID: '1596', maxHafta: 26 }, // Bölgesel Amatör Lig Grup 4
+interface LeagueTFFConfig {
+  grupID: string;
+  pageID: string;
+  maxHafta: number;
+  /** true → TFF'den gelen maçlar constants'ta yoksa eklenir (ilk sezon maçları eksik olan ligler için) */
+  allowAddFromTFF?: boolean;
+}
+
+const LEAGUE_TFF_CONFIG: Record<string, LeagueTFFConfig> = {
+  'karabuk': { grupID: '2785', pageID: '971', maxHafta: 34 },
+  'eflani':  { grupID: '3304', pageID: '1596', maxHafta: 26, allowAddFromTFF: true },
+  'amator_a': { grupID: '3448', pageID: '1633', maxHafta: 14 },
+  'amator_b': { grupID: '3449', pageID: '1633', maxHafta: 14 },
 };
 
-// ─── KARABÜK 16 TAKIM — TFF kulupId → local team id ──────────────────────────
+// ─── KARABÜK 3. LİG TAKIM HARİTASI ─────────────────────────────────────────────
 // Kaynak: tff.org/Default.aspx?pageID=28&kulupID=XXXX
 const KARABUK_KULUP_MAP: Record<number, number> = {
   10300: 1,   // Sebat Gençlik Spor
@@ -27,17 +37,37 @@ const KARABUK_KULUP_MAP: Record<number, number> = {
   3629:  16,  // Giresunspor
 };
 
+// ─── EFLANİ BAL 4. GRUP TAKIM HARİTASI ──────────────────────────────────────────
+// 14 takımın tamamı: tff.org/Default.aspx?pageID=28&kulupID=XXXX
+const EFLANI_KULUP_MAP: Record<number, number> = {
+  3628:  1,   // Çarşambaspor
+  8261:  2,   // Çankırı Futbol Spor Kulübü
+  2554:  3,   // Ladik Belediyespor
+  538:   4,   // Sorgun Belediyespor
+  212:   5,   // Devrek Belediyespor
+  3331:  6,   // 1930 Bafra Spor
+  12922: 7,   // Turhal 60 Futbol Spor Kulübü
+  5011:  8,   // Sinopspor
+  3698:  9,   // AVS Çaycuma Spor Kulübü
+  73:    10,  // Merzifonspor
+  12410: 11,  // Tavuk Evi Eflani Spor / ASD Eflani Spor Kulübü
+  1930:  12,  // Yeniçağa Spor Kulübü
+  95:    13,  // Bartınspor
+  13706: 14,  // Kırşehir Yetişen Yıldızlar Spor Kulübü (TFF kulupID doğrulandı)
+};
+
 const KULUP_MAPS: Record<string, Record<number, number>> = {
   'karabuk': KARABUK_KULUP_MAP,
+  'eflani':  EFLANI_KULUP_MAP,
 };
 
 // ─── Tipler ──────────────────────────────────────────────────────────────────
-interface TFFStanding {
+export interface TFFStanding {
   rank: number; kulupId: number; name: string;
   played: number; won: number; drawn: number; lost: number;
   gf: number; ga: number; gd: number; pts: number;
 }
-interface TFFFixture {
+export interface TFFFixture {
   week: number;
   homeKulupId: number; homeTeamName: string;
   awayKulupId: number; awayTeamName: string;
@@ -59,22 +89,46 @@ async function fetchTFFWeek(grupID: string, pageID: string, hafta: number): Prom
   return await response.json() as TFFSyncResult;
 }
 
+/**
+ * En güncel geçerli haftayı otomatik bulur.
+ * Önce maxHafta'dan geriye doğru, bulamazsa 1'den ileri doğru arar.
+ */
+async function findLatestValidWeek(
+  grupID: string, pageID: string, maxHafta: number
+): Promise<{ data: TFFSyncResult; week: number } | null> {
+  // maxHafta'dan geriye doğru ara (sezon sonuna yakın ligler için)
+  for (let hafta = maxHafta; hafta >= 1; hafta--) {
+    try {
+      const data = await fetchTFFWeek(grupID, pageID, hafta);
+      if (data.success && data.standings && data.standings.length > 0) {
+        return { data, week: hafta };
+      }
+    } catch (_) { /* devam et */ }
+  }
+  return null;
+}
+
 /** Tam güncelleme: puan durumu + tüm haftaların fikstürü */
 export async function fetchTFFData(leagueId: string): Promise<TFFSyncResult | null> {
   const config = LEAGUE_TFF_CONFIG[leagueId];
   if (!config) return null;
 
-  // Puan durumu en son haftadan alınır (her zaman güncel)
-  const latestData = await fetchTFFWeek(config.grupID, config.pageID, config.maxHafta);
-  if (!latestData.success) return latestData;
+  // Mevcut en güncel haftayı otomatik bul (maxHafta'dan 1'e kadar arar)
+  const latest = await findLatestValidWeek(config.grupID, config.pageID, config.maxHafta);
+  if (!latest) {
+    return { success: false, standings: [], fixtures: [], lastUpdated: new Date().toISOString(), error: 'Güncel hafta verisi bulunamadı' };
+  }
 
-  // Tüm haftaların fikstürlerini paralel çek
-  const weekPromises = Array.from({ length: config.maxHafta }, (_, i) =>
+  const { data: latestData, week: currentWeek } = latest;
+
+  // BAL gibi liglerde TFF sayfası tüm fikstürü tek sayfada gösteriyor.
+  // Yine de hafta 1'den itibaren paralel çekip dedup yapıyoruz (fikstür garantisi için).
+  const weekPromises = Array.from({ length: currentWeek }, (_, i) =>
     fetchTFFWeek(config.grupID, config.pageID, i + 1).catch(() => null)
   );
   const weekResults = await Promise.all(weekPromises);
 
-  const allFixtures: TFFFixture[] = [];
+  const allFixtures: TFFFixture[] = [...(latestData.fixtures ?? [])];
   for (const result of weekResults) {
     if (result?.success && result.fixtures) {
       for (const f of result.fixtures) {
@@ -89,11 +143,13 @@ export async function fetchTFFData(leagueId: string): Promise<TFFSyncResult | nu
   return { ...latestData, fixtures: allFixtures };
 }
 
-/** Hızlı güncelleme: sadece puan durumu (son hafta) */
+/** Hızlı güncelleme: sadece en son hafta (puan durumu + o haftanın fikstürü) */
 export async function fetchTFFDataQuick(leagueId: string): Promise<TFFSyncResult | null> {
   const config = LEAGUE_TFF_CONFIG[leagueId];
   if (!config) return null;
-  return fetchTFFWeek(config.grupID, config.pageID, config.maxHafta);
+  // En güncel geçerli haftayı otomatik bul
+  const latest = await findLatestValidWeek(config.grupID, config.pageID, config.maxHafta);
+  return latest?.data ?? null;
 }
 
 // ─── Puan durumu eşleştirme ───────────────────────────────────────────────────
@@ -128,16 +184,16 @@ export function mapTFFStandingsToTeams(
 
 // ─── Fikstür güncelleme ───────────────────────────────────────────────────────
 /**
- * TFF fikstür sonuçlarını constants'taki fikstüre uygular.
+ * TFF fikstür verilerini yerel maç listesine uygular.
  *
- * KRİTİK DEĞİŞİKLİK: SADECE mevcut maçları günceller, asla yeni maç eklemez.
- * Bu sayede hafta 1-21'deki yüzlerce maçın birikimi önlenir.
- * Puan durumu zaten doğrudan TFF'den (tffStandings) gelir.
+ * Karabük (allowAddFromTFF = false, varsayılan):
+ *   - Sadece constants'ta var olan maçları günceller. Asla yeni maç eklemez.
+ *   - Birikme hatası yaşanmaz.
  *
- * @param tffFixtures    TFF'den gelen maç sonuçları
- * @param localTeams     Yerel takım listesi
- * @param baseFixtures   Constants'tan gelen ORİJİNAL fikstür (localStorage değil!)
- * @param leagueId       Lig kimliği (kulupId haritası için)
+ * Eflani (allowAddFromTFF = true):
+ *   - Var olan maçları günceller.
+ *   - constants'ta henüz olmayan (hafta 1-16) oynanan maçları ekler.
+ *   - Aynı hafta+ev+deplasman çifti için asla duplikasyon yapmaz.
  */
 export function mapTFFFixturesToMatches(
   tffFixtures: TFFFixture[],
@@ -146,19 +202,20 @@ export function mapTFFFixturesToMatches(
   leagueId?: string
 ): Match[] {
   const kulupMap = leagueId ? (KULUP_MAPS[leagueId] ?? {}) : {};
-  // Orijinal fikstürün kopyasından başla
+  const config    = leagueId ? LEAGUE_TFF_CONFIG[leagueId] : undefined;
+  const allowAdd  = config?.allowAddFromTFF ?? false;
+
   const updatedMatches = baseFixtures.map(m => ({ ...m }));
+  let nextId = Math.max(0, ...updatedMatches.map(m => (typeof m.id === 'number' ? m.id : 0))) + 1;
 
   for (const tffMatch of tffFixtures) {
-    if (!tffMatch.isPlayed) continue;
-
-    const homeLocalId = kulupMap[tffMatch.homeKulupId];
-    const awayLocalId = kulupMap[tffMatch.awayKulupId];
+    // Henüz oynanmamış maçları ekleme/güncelleme
+    const homeLocalId = resolveTeamId(tffMatch.homeKulupId, tffMatch.homeTeamName, kulupMap, localTeams);
+    const awayLocalId = resolveTeamId(tffMatch.awayKulupId, tffMatch.awayTeamName, kulupMap, localTeams);
 
     if (!homeLocalId || !awayLocalId) continue;   // bilinmeyen takım → atla
-    if (homeLocalId === awayLocalId) continue;     // aynı takım iki kez → kesinlikle hata
+    if (homeLocalId === awayLocalId) continue;     // aynı takım × güvenlik
 
-    // Sadece mevcut maçı bul ve güncelle — yeni maç ekleme!
     const existingIdx = updatedMatches.findIndex(
       m => m.week === tffMatch.week &&
            m.homeTeamId === homeLocalId &&
@@ -166,30 +223,57 @@ export function mapTFFFixturesToMatches(
     );
 
     if (existingIdx >= 0) {
-      updatedMatches[existingIdx] = {
-        ...updatedMatches[existingIdx],
-        homeScore: tffMatch.homeScore,
-        awayScore: tffMatch.awayScore,
-        isPlayed:  true,
-      };
+      // Mevcut maçı güncelle
+      if (tffMatch.isPlayed) {
+        updatedMatches[existingIdx] = {
+          ...updatedMatches[existingIdx],
+          homeScore: tffMatch.homeScore,
+          awayScore: tffMatch.awayScore,
+          isPlayed:  true,
+        };
+      }
+    } else if (allowAdd && tffMatch.isPlayed) {
+      // Yalnızca allowAddFromTFF = true LİGLERDE ve SADECE oynanan maçlar için ekle
+      updatedMatches.push({
+        id:         nextId++,
+        week:       tffMatch.week,
+        homeTeamId: homeLocalId,
+        awayTeamId: awayLocalId,
+        homeScore:  tffMatch.homeScore,
+        awayScore:  tffMatch.awayScore,
+        isPlayed:   true,
+      });
     }
-    // existingIdx === -1 ise → maç constants'ta yok, ekleme!
   }
 
   return updatedMatches;
 }
 
-// ─── İsim eşleştirme (kulupId map başarısız olursa fallback) ─────────────────
+// ─── Yardımcı: kulupId veya isim ile local ID çöz ────────────────────────────
+function resolveTeamId(
+  kulupId: number,
+  teamName: string,
+  kulupMap: Record<number, number>,
+  localTeams: Team[]
+): number | undefined {
+  const fromMap = kulupMap[kulupId];
+  if (fromMap) return fromMap;
+  // Haritada yok → isim eşleştirme (güvenli fallback)
+  return findMatchingTeam(teamName, localTeams)?.id;
+}
+
+// ─── İsim normalize & eşleştirme (fallback) ──────────────────────────────────
 function normalizeName(name: string): string {
   return name
     .toUpperCase()
     .replace(/İ/g, 'I').replace(/Ğ/g, 'G').replace(/Ü/g, 'U')
     .replace(/Ş/g, 'S').replace(/Ö/g, 'O').replace(/Ç/g, 'C')
-    .replace(/([A-Z0-9])SPOR\b/g, '$1 SPOR')   // PAZARSPOR → PAZAR SPOR
+    .replace(/([A-Z0-9])SPOR\b/g, '$1 SPOR')
     .replace(/\bBELEDIYESI\b/g, 'BELEDIYE')
     .replace(/\bBELEDIYESPOR\b/g, 'BELEDIYE SPOR')
     .replace(/\bKULUBU\b/g, '').replace(/\bFK\b/g, '')
     .replace(/\bA\.S\b/g, '').replace(/\bA\.S\.\b/g, '')
+    .replace(/\bASD\b/g, '').replace(/\bAVS\b/g, '')
     .replace(/[^A-Z0-9 ]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
@@ -198,18 +282,15 @@ function normalizeName(name: string): string {
 function findMatchingTeam(tffName: string, localTeams: Team[]): Team | undefined {
   const normTFF = normalizeName(tffName);
 
-  // 1. Tam eşleşme
   const exact = localTeams.find(t => normalizeName(t.name) === normTFF);
   if (exact) return exact;
 
-  // 2. Biri diğerini içeriyor
   const contains = localTeams.find(t => {
     const ln = normalizeName(t.name);
     return normTFF.includes(ln) || ln.includes(normTFF);
   });
   if (contains) return contains;
 
-  // 3. En az 2 uzun kelime örtüşmesi (5+ harf)
   const scored = localTeams.map(t => {
     const ln    = normalizeName(t.name);
     const wA    = normTFF.split(' ').filter(w => w.length >= 5);
@@ -226,4 +307,12 @@ function findMatchingTeam(tffName: string, localTeams: Team[]): Team | undefined
 
 export function hasTFFSync(leagueId: string): boolean {
   return leagueId in LEAGUE_TFF_CONFIG;
+}
+
+/**
+ * BAL gibi ligler için otomatik sync'te TÜM haftalar çekilmeli (tam senkronizasyon).
+ * Nesine 3. Lig gibi liglerde sadece son hafta yeterlidir (hız için).
+ */
+export function needsFullAutoSync(leagueId: string): boolean {
+  return LEAGUE_TFF_CONFIG[leagueId]?.allowAddFromTFF === true;
 }

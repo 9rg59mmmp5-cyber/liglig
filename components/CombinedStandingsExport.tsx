@@ -317,22 +317,22 @@ const CombinedStandingsExport: React.FC<CombinedStandingsExportProps> = ({ onClo
     setIsSendingTelegram(true);
     try {
       const canvas = buildCanvas();
+      // sendDocument kullan — sendPhoto'nun "bad request" hatasından kaçınır
       const blob: Blob = await new Promise((res, rej) =>
-        canvas.toBlob(b => b ? res(b) : rej(new Error('Blob hatası')), 'image/jpeg', 0.92)
+        canvas.toBlob(b => b ? res(b) : rej(new Error('Blob hatası')), 'image/png')
       );
-      const results: { chatId: string; ok: boolean; err?: string }[] = [];
+      let failCount = 0;
       for (const chatId of CHAT_IDS) {
         const form = new FormData();
         form.append('chat_id', chatId);
-        form.append('photo', blob, 'puan-durumu.jpg');
+        form.append('document', blob, 'karabuk-amator-puan-durumu.png');
         form.append('caption', `📊 Karabük 1. Amatör Lig ${selectedWeek}. Hafta Puan Durumu`);
-        const res  = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: 'POST', body: form });
+        const res  = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`, { method: 'POST', body: form });
         const data = await res.json();
-        results.push({ chatId, ok: data.ok, err: data.description });
+        if (!data.ok) failCount++;
       }
-      const failed = results.filter(r => !r.ok);
-      if (failed.length === 0) alert(`✅ ${results.length} gruba gönderildi!`);
-      else alert(`⚠️ Hata:\n${failed.map(r => `${r.chatId}: ${r.err}`).join('\n')}`);
+      if (failCount === 0) alert(`✅ Gönderildi! (${CHAT_IDS.length} grup)`);
+      else alert(`⚠️ ${failCount} grup gönderilemedi. Diğerleri iletildi.`);
     } catch (err: any) {
       alert('Telegram hatası: ' + (err.message || 'Bilinmeyen'));
     } finally {

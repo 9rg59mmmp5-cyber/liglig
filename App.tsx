@@ -7,6 +7,7 @@ import StandingsTable from './components/StandingsTable';
 import FixtureList from './components/FixtureList';
 import { BarChart3, ArrowDown, Image, Smartphone, Calendar, Trophy, ChevronDown, CheckCircle2, X, Share, Settings, RefreshCw } from 'lucide-react';
 import CombinedStandingsExport from './components/CombinedStandingsExport';
+import LeagueStandingsExport from './components/LeagueStandingsExport';
 import { fetchTFFData, mapTFFStandingsToTeams, mapTFFFixturesToMatches, hasTFFSync } from './services/tffService';
 
 const App: React.FC = () => {
@@ -14,6 +15,7 @@ const App: React.FC = () => {
   const [activeLeagueId, setActiveLeagueId] = useState<string>('karabuk');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showCombinedExport, setShowCombinedExport] = useState(false);
+  const [showLeagueExport, setShowLeagueExport] = useState<'karabuk' | 'eflani' | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // TFF Sync state
@@ -37,7 +39,10 @@ const App: React.FC = () => {
   // Bozuk/şişmiş veri tespiti: TFF sync birikimiyle 100+ maç eklenmiş olabilir
   useEffect(() => {
     const league = LEAGUES[activeLeagueId];
-    const maxExpected = league.fixtures.length + league.teams.length * 2; // makul üst sınır
+    // Tam tur-rövanş (tam sezon) için teorik maksimum: n*(n-1)
+    // Bu sayede eflani gibi TFF'den ekstra hafta çeken liglerde yanlış reset olmaz
+    const fullSeasonMax = league.teams.length * (league.teams.length - 1);
+    const maxExpected = Math.max(league.fixtures.length * 3, fullSeasonMax + 10);
     const savedFixtures = localStorage.getItem(`fixtures_${activeLeagueId}`);
     if (savedFixtures) {
       try {
@@ -122,9 +127,12 @@ const App: React.FC = () => {
     let cancelled = false;
     (async () => {
       try {
-        const { fetchTFFDataQuick, mapTFFStandingsToTeams: mapStandings, mapTFFFixturesToMatches: mapFixtures } = await import('./services/tffService');
+        const { fetchTFFData, fetchTFFDataQuick, needsFullAutoSync, mapTFFStandingsToTeams: mapStandings, mapTFFFixturesToMatches: mapFixtures } = await import('./services/tffService');
         if (cancelled) return;
-        const data = await fetchTFFDataQuick(activeLeagueId);
+        // BAL gibi tüm haftaları çekmesi gereken ligler için fetchTFFData,
+        // Nesine 3. Lig gibi sadece son hafta yeterli olanlar için fetchTFFDataQuick
+        const fetchFn = needsFullAutoSync(activeLeagueId) ? fetchTFFData : fetchTFFDataQuick;
+        const data = await fetchFn(activeLeagueId);
         if (cancelled || !data?.success) return;
 
         // Puan durumunu TFF'den doğrudan al
@@ -351,6 +359,20 @@ const App: React.FC = () => {
                                 <Image className="w-4 h-4 text-purple-600" />
                                 1. Amatör (A+B) Ortak Puan
                             </button>
+                            <button
+                                onClick={() => { setShowLeagueExport('karabuk'); setIsSettingsOpen(false); }}
+                                className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 border-b border-slate-50 flex items-center gap-3"
+                            >
+                                <Image className="w-4 h-4 text-red-600" />
+                                Karabük İdman Yurdu Puan Durumu
+                            </button>
+                            <button
+                                onClick={() => { setShowLeagueExport('eflani'); setIsSettingsOpen(false); }}
+                                className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 border-b border-slate-50 flex items-center gap-3"
+                            >
+                                <Image className="w-4 h-4 text-green-600" />
+                                Tavuk Evi Eflani Spor Puan Durumu
+                            </button>
                             {hasTFFSync(activeLeagueId) && (
                               <button
                                 onClick={() => { handleTFFSync(); setIsSettingsOpen(false); }}
@@ -519,6 +541,14 @@ const App: React.FC = () => {
       {/* Combined Export Modal */}
       {showCombinedExport && (
         <CombinedStandingsExport onClose={() => setShowCombinedExport(false)} />
+      )}
+
+      {/* Karabük / Eflani Puan Durumu Export Modal */}
+      {showLeagueExport && (
+        <LeagueStandingsExport
+          leagueId={showLeagueExport}
+          onClose={() => setShowLeagueExport(null)}
+        />
       )}
 
       {/* Image Preview Modal (Fallback for Mobile if Share fails) */}
