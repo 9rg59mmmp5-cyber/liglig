@@ -115,22 +115,22 @@ export async function fetchTFFData(leagueId: string): Promise<TFFSyncResult | nu
   const config = LEAGUE_TFF_CONFIG[leagueId];
   if (!config) return null;
 
-  // Mevcut en güncel haftayı otomatik bul (maxHafta'dan 1'e kadar arar)
+  // Mevcut en güncel haftayı bul (puan durumu için)
   const latest = await findLatestValidWeek(config.grupID, config.pageID, config.maxHafta);
   if (!latest) {
     return { success: false, standings: [], fixtures: [], lastUpdated: new Date().toISOString(), error: 'Güncel hafta verisi bulunamadı' };
   }
 
-  const { data: latestData, week: currentWeek } = latest;
+  const { data: latestData } = latest;
 
-  // BAL gibi liglerde TFF sayfası tüm fikstürü tek sayfada gösteriyor.
-  // Yine de hafta 1'den itibaren paralel çekip dedup yapıyoruz (fikstür garantisi için).
-  const weekPromises = Array.from({ length: currentWeek }, (_, i) =>
+  // Kullanıcı isteği: Her haftayı tek tek kontrol et (özellikle Eflani gibi BAL ligleri için)
+  // config.maxHafta'ya kadar tüm haftaları paralel çekiyoruz
+  const weekPromises = Array.from({ length: config.maxHafta }, (_, i) =>
     fetchTFFWeek(config.grupID, config.pageID, i + 1).catch(() => null)
   );
   const weekResults = await Promise.all(weekPromises);
 
-  const allFixtures: TFFFixture[] = [...(latestData.fixtures ?? [])];
+  const allFixtures: TFFFixture[] = [];
   for (const result of weekResults) {
     if (result?.success && result.fixtures) {
       for (const f of result.fixtures) {
