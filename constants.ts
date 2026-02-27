@@ -23,17 +23,7 @@ const KARABUK_TEAMS = [
 ];
 
 const KARABUK_FIXTURES = [
-  // Week 22
-  { id: 'k22_1', week: 22, homeTeamId: 3, awayTeamId: 8, homeScore: null, awayScore: null, isPlayed: false }, // Fatsa vs Pazar
-  { id: 'k22_2', week: 22, homeTeamId: 6, awayTeamId: 2, homeScore: null, awayScore: null, isPlayed: false }, // Ereğli vs 52 Ordu
-  { id: 'k22_3', week: 22, homeTeamId: 1, awayTeamId: 9, homeScore: null, awayScore: null, isPlayed: false }, // Sebat vs Tokat
-  { id: 'k22_4', week: 22, homeTeamId: 4, awayTeamId: 13, homeScore: null, awayScore: null, isPlayed: false }, // Yozgat vs Amasya
-  { id: 'k22_5', week: 22, homeTeamId: 10, awayTeamId: 5, homeScore: null, awayScore: null, isPlayed: false }, // Bulancak vs Zonguldak
-  { id: 'k22_6', week: 22, homeTeamId: 15, awayTeamId: 12, homeScore: null, awayScore: null, isPlayed: false }, // Çayeli vs Karabük
-  { id: 'k22_7', week: 22, homeTeamId: 14, awayTeamId: 16, homeScore: null, awayScore: null, isPlayed: false }, // Hopa vs Giresun
-  { id: 'k22_8', week: 22, homeTeamId: 11, awayTeamId: 7, homeScore: null, awayScore: null, isPlayed: false }, // Orduspor 1967 vs Düzce
-
-  // Week 23
+// Week 23
   { id: 'k23_1', week: 23, homeTeamId: 13, awayTeamId: 15, homeScore: null, awayScore: null, isPlayed: false }, // Amasya vs Çayeli
   { id: 'k23_2', week: 23, homeTeamId: 12, awayTeamId: 10, homeScore: null, awayScore: null, isPlayed: false }, // Karabük vs Bulancak
   { id: 'k23_3', week: 23, homeTeamId: 2, awayTeamId: 14, homeScore: null, awayScore: null, isPlayed: false }, // 52 Ordu vs Hopa
@@ -113,169 +103,32 @@ const KARABUK_FIXTURES = [
   { id: 'k30_7', week: 30, homeTeamId: 1, awayTeamId: 4, homeScore: null, awayScore: null, isPlayed: false }, // Sebat vs Yozgat
   { id: 'k30_8', week: 30, homeTeamId: 9, awayTeamId: 7, homeScore: null, awayScore: null, isPlayed: false }, // Tokat vs Düzce
 ];
+];
 
 
 // --- TAVUK EVİ EFLANİ SPOR DATA (BAL 4. GRUP) ---
 // Week 16 Standings
-// Takımlar sıfırdan — TFF sync gelince standings override eder,
-// TFF yoksa fikstürden hesaplanır (her iki durumda 0'dan doğru çalışır)
+// --- TAVUK EVİ EFLANİ SPOR — 17. HAFTA PUAN DURUMU (01.03.2026 itibariyle) ---
+// Kaynak: TFF.org — TFF Sync ile otomatik güncellenir
 const EFLANI_TEAMS = [
-  { id: 1, name: "Çarşambaspor", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0, form: [] },
-  { id: 2, name: "Çankırı Futbol SK", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0, form: [] },
-  { id: 3, name: "Ladik Belediyespor", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0, form: [] },
-  { id: 4, name: "Sorgun Belediyespor", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0, form: [] },
-  { id: 5, name: "Devrek Belediyespor", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0, form: [] },
-  { id: 6, name: "1930 Bafra Spor", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0, form: [] },
-  { id: 7, name: "Turhal 60 Futbol SK", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0, form: [] },
-  { id: 10, name: "Merzifonspor", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0, form: [] },
-  { id: 8, name: "Sinopspor", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0, form: [] },
-  { id: 9, name: "AVS Çaycuma Spor Kulübü", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0, form: [] },
-  { id: 11, name: "Tavuk Evi Eflani Spor Kulübü", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0, form: [] },
-  { id: 12, name: "Yeniçağa Spor Kulübü", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0, form: [] },
-  { id: 13, name: "Bartınspor", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0, form: [] },
-  { id: 14, name: "Kırşehir Yetişen Yıldızlar Spor", played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0, form: [] },
+  { id: 2,  name: "Çankırı Futbol SK",              played: 17, won: 13, drawn: 2, lost: 2,  gf: 36, ga: 11, gd: 25,  pts: 41, form: [] },
+  { id: 1,  name: "Çarşambaspor",                   played: 17, won: 12, drawn: 3, lost: 2,  gf: 33, ga: 8,  gd: 25,  pts: 39, form: [] },
+  { id: 3,  name: "Ladik Belediyespor",              played: 17, won: 10, drawn: 5, lost: 2,  gf: 26, ga: 13, gd: 13,  pts: 35, form: [] },
+  { id: 4,  name: "Sorgun Belediyespor",             played: 17, won: 8,  drawn: 5, lost: 4,  gf: 25, ga: 16, gd: 9,   pts: 29, form: [] },
+  { id: 5,  name: "Devrek Belediyespor",             played: 17, won: 8,  drawn: 3, lost: 6,  gf: 30, ga: 18, gd: 12,  pts: 27, form: [] },
+  { id: 6,  name: "1930 Bafra Spor",                 played: 17, won: 8,  drawn: 3, lost: 6,  gf: 20, ga: 20, gd: 0,   pts: 27, form: [] },
+  { id: 9,  name: "AVS Çaycuma Spor Kulübü",         played: 17, won: 7,  drawn: 2, lost: 8,  gf: 22, ga: 27, gd: -5,  pts: 23, form: [] },
+  { id: 7,  name: "Turhal 60 Futbol SK",             played: 17, won: 5,  drawn: 7, lost: 5,  gf: 27, ga: 19, gd: 8,   pts: 22, form: [] },
+  { id: 8,  name: "Sinopspor",                       played: 17, won: 5,  drawn: 5, lost: 7,  gf: 21, ga: 22, gd: -1,  pts: 20, form: [] },
+  { id: 10, name: "Merzifonspor",                    played: 17, won: 5,  drawn: 4, lost: 8,  gf: 15, ga: 22, gd: -7,  pts: 19, form: [] },
+  { id: 11, name: "Tavuk Evi Eflani Spor Kulübü",    played: 17, won: 3,  drawn: 7, lost: 7,  gf: 19, ga: 25, gd: -6,  pts: 16, form: [] },
+  { id: 13, name: "Bartınspor",                      played: 17, won: 3,  drawn: 3, lost: 11, gf: 12, ga: 30, gd: -18, pts: 12, form: [] },
+  { id: 12, name: "Yeniçağa Spor Kulübü",            played: 17, won: 2,  drawn: 4, lost: 11, gf: 14, ga: 33, gd: -19, pts: 10, form: [] },
+  { id: 14, name: "Kırşehir Yetişen Yıldızlar Spor", played: 17, won: 2,  drawn: 3, lost: 12, gf: 14, ga: 50, gd: -36, pts: 9,  form: [] },
 ];
 
 const EFLANI_FIXTURES = [
-  // Week 1
-  { id: 'e1_1', week: 1, homeTeamId: 1,  awayTeamId: 2,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e1_2', week: 1, homeTeamId: 3,  awayTeamId: 4,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e1_3', week: 1, homeTeamId: 5,  awayTeamId: 6,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e1_4', week: 1, homeTeamId: 7,  awayTeamId: 8,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e1_5', week: 1, homeTeamId: 9,  awayTeamId: 10, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e1_6', week: 1, homeTeamId: 11, awayTeamId: 12, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e1_7', week: 1, homeTeamId: 13, awayTeamId: 14, homeScore: null, awayScore: null, isPlayed: false },
-  // Week 2
-  { id: 'e2_1', week: 2, homeTeamId: 2,  awayTeamId: 3,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e2_2', week: 2, homeTeamId: 4,  awayTeamId: 5,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e2_3', week: 2, homeTeamId: 6,  awayTeamId: 7,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e2_4', week: 2, homeTeamId: 8,  awayTeamId: 9,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e2_5', week: 2, homeTeamId: 10, awayTeamId: 11, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e2_6', week: 2, homeTeamId: 12, awayTeamId: 13, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e2_7', week: 2, homeTeamId: 14, awayTeamId: 1,  homeScore: null, awayScore: null, isPlayed: false },
-  // Week 3
-  { id: 'e3_1', week: 3, homeTeamId: 1,  awayTeamId: 3,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e3_2', week: 3, homeTeamId: 2,  awayTeamId: 4,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e3_3', week: 3, homeTeamId: 5,  awayTeamId: 7,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e3_4', week: 3, homeTeamId: 6,  awayTeamId: 8,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e3_5', week: 3, homeTeamId: 9,  awayTeamId: 11, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e3_6', week: 3, homeTeamId: 10, awayTeamId: 12, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e3_7', week: 3, homeTeamId: 13, awayTeamId: 14, homeScore: null, awayScore: null, isPlayed: false },
-  // Week 4
-  { id: 'e4_1', week: 4, homeTeamId: 4,  awayTeamId: 1,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e4_2', week: 4, homeTeamId: 3,  awayTeamId: 5,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e4_3', week: 4, homeTeamId: 7,  awayTeamId: 9,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e4_4', week: 4, homeTeamId: 8,  awayTeamId: 10, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e4_5', week: 4, homeTeamId: 11, awayTeamId: 13, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e4_6', week: 4, homeTeamId: 12, awayTeamId: 14, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e4_7', week: 4, homeTeamId: 2,  awayTeamId: 6,  homeScore: null, awayScore: null, isPlayed: false },
-  // Week 5
-  { id: 'e5_1', week: 5, homeTeamId: 1,  awayTeamId: 5,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e5_2', week: 5, homeTeamId: 2,  awayTeamId: 7,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e5_3', week: 5, homeTeamId: 3,  awayTeamId: 6,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e5_4', week: 5, homeTeamId: 4,  awayTeamId: 8,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e5_5', week: 5, homeTeamId: 9,  awayTeamId: 12, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e5_6', week: 5, homeTeamId: 10, awayTeamId: 13, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e5_7', week: 5, homeTeamId: 11, awayTeamId: 14, homeScore: null, awayScore: null, isPlayed: false },
-  // Week 6
-  { id: 'e6_1', week: 6, homeTeamId: 6,  awayTeamId: 1,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e6_2', week: 6, homeTeamId: 5,  awayTeamId: 2,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e6_3', week: 6, homeTeamId: 8,  awayTeamId: 3,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e6_4', week: 6, homeTeamId: 7,  awayTeamId: 4,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e6_5', week: 6, homeTeamId: 12, awayTeamId: 10, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e6_6', week: 6, homeTeamId: 13, awayTeamId: 11, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e6_7', week: 6, homeTeamId: 14, awayTeamId: 9,  homeScore: null, awayScore: null, isPlayed: false },
-  // Week 7
-  { id: 'e7_1', week: 7, homeTeamId: 1,  awayTeamId: 7,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e7_2', week: 7, homeTeamId: 2,  awayTeamId: 8,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e7_3', week: 7, homeTeamId: 3,  awayTeamId: 9,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e7_4', week: 7, homeTeamId: 4,  awayTeamId: 10, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e7_5', week: 7, homeTeamId: 5,  awayTeamId: 11, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e7_6', week: 7, homeTeamId: 6,  awayTeamId: 12, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e7_7', week: 7, homeTeamId: 13, awayTeamId: 14, homeScore: null, awayScore: null, isPlayed: false },
-  // Week 8
-  { id: 'e8_1', week: 8, homeTeamId: 8,  awayTeamId: 1,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e8_2', week: 8, homeTeamId: 7,  awayTeamId: 2,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e8_3', week: 8, homeTeamId: 10, awayTeamId: 3,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e8_4', week: 8, homeTeamId: 9,  awayTeamId: 4,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e8_5', week: 8, homeTeamId: 12, awayTeamId: 5,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e8_6', week: 8, homeTeamId: 11, awayTeamId: 6,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e8_7', week: 8, homeTeamId: 14, awayTeamId: 13, homeScore: null, awayScore: null, isPlayed: false },
-  // Week 9
-  { id: 'e9_1', week: 9, homeTeamId: 1,  awayTeamId: 9,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e9_2', week: 9, homeTeamId: 2,  awayTeamId: 10, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e9_3', week: 9, homeTeamId: 3,  awayTeamId: 11, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e9_4', week: 9, homeTeamId: 4,  awayTeamId: 12, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e9_5', week: 9, homeTeamId: 5,  awayTeamId: 13, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e9_6', week: 9, homeTeamId: 6,  awayTeamId: 14, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e9_7', week: 9, homeTeamId: 7,  awayTeamId: 8,  homeScore: null, awayScore: null, isPlayed: false },
-  // Week 10
-  { id: 'e10_1', week: 10, homeTeamId: 10, awayTeamId: 1,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e10_2', week: 10, homeTeamId: 9,  awayTeamId: 2,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e10_3', week: 10, homeTeamId: 12, awayTeamId: 3,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e10_4', week: 10, homeTeamId: 11, awayTeamId: 4,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e10_5', week: 10, homeTeamId: 14, awayTeamId: 5,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e10_6', week: 10, homeTeamId: 13, awayTeamId: 6,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e10_7', week: 10, homeTeamId: 8,  awayTeamId: 7,  homeScore: null, awayScore: null, isPlayed: false },
-  // Week 11
-  { id: 'e11_1', week: 11, homeTeamId: 1,  awayTeamId: 11, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e11_2', week: 11, homeTeamId: 2,  awayTeamId: 12, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e11_3', week: 11, homeTeamId: 3,  awayTeamId: 13, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e11_4', week: 11, homeTeamId: 4,  awayTeamId: 14, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e11_5', week: 11, homeTeamId: 5,  awayTeamId: 9,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e11_6', week: 11, homeTeamId: 6,  awayTeamId: 10, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e11_7', week: 11, homeTeamId: 7,  awayTeamId: 8,  homeScore: null, awayScore: null, isPlayed: false },
-  // Week 12
-  { id: 'e12_1', week: 12, homeTeamId: 12, awayTeamId: 1,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e12_2', week: 12, homeTeamId: 11, awayTeamId: 2,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e12_3', week: 12, homeTeamId: 14, awayTeamId: 3,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e12_4', week: 12, homeTeamId: 13, awayTeamId: 4,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e12_5', week: 12, homeTeamId: 10, awayTeamId: 5,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e12_6', week: 12, homeTeamId: 9,  awayTeamId: 6,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e12_7', week: 12, homeTeamId: 8,  awayTeamId: 7,  homeScore: null, awayScore: null, isPlayed: false },
-  // Week 13
-  { id: 'e13_1', week: 13, homeTeamId: 1,  awayTeamId: 13, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e13_2', week: 13, homeTeamId: 2,  awayTeamId: 14, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e13_3', week: 13, homeTeamId: 4,  awayTeamId: 6,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e13_4', week: 13, homeTeamId: 3,  awayTeamId: 10, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e13_5', week: 13, homeTeamId: 5,  awayTeamId: 12, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e13_6', week: 13, homeTeamId: 7,  awayTeamId: 9,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e13_7', week: 13, homeTeamId: 11, awayTeamId: 8,  homeScore: null, awayScore: null, isPlayed: false },
-  // Week 14
-  { id: 'e14_1', week: 14, homeTeamId: 14, awayTeamId: 1,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e14_2', week: 14, homeTeamId: 13, awayTeamId: 2,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e14_3', week: 14, homeTeamId: 10, awayTeamId: 4,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e14_4', week: 14, homeTeamId: 6,  awayTeamId: 3,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e14_5', week: 14, homeTeamId: 12, awayTeamId: 5,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e14_6', week: 14, homeTeamId: 9,  awayTeamId: 7,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e14_7', week: 14, homeTeamId: 8,  awayTeamId: 11, homeScore: null, awayScore: null, isPlayed: false },
-  // Week 15
-  { id: 'e15_1', week: 15, homeTeamId: 1,  awayTeamId: 14, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e15_2', week: 15, homeTeamId: 2,  awayTeamId: 13, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e15_3', week: 15, homeTeamId: 4,  awayTeamId: 11, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e15_4', week: 15, homeTeamId: 3,  awayTeamId: 12, homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e15_5', week: 15, homeTeamId: 6,  awayTeamId: 9,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e15_6', week: 15, homeTeamId: 5,  awayTeamId: 8,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e15_7', week: 15, homeTeamId: 7,  awayTeamId: 10, homeScore: null, awayScore: null, isPlayed: false },
-  // Week 16
-  { id: 'e16_1', week: 16, homeTeamId: 11, awayTeamId: 1,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e16_2', week: 16, homeTeamId: 13, awayTeamId: 3,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e16_3', week: 16, homeTeamId: 14, awayTeamId: 2,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e16_4', week: 16, homeTeamId: 12, awayTeamId: 6,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e16_5', week: 16, homeTeamId: 10, awayTeamId: 7,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e16_6', week: 16, homeTeamId: 9,  awayTeamId: 8,  homeScore: null, awayScore: null, isPlayed: false },
-  { id: 'e16_7', week: 16, homeTeamId: 4,  awayTeamId: 5,  homeScore: null, awayScore: null, isPlayed: false },
-
-  // Week 17 — Kaynak: TFF 22.02.2026
-  { id: 'e17_1', week: 17, homeTeamId: 9,  awayTeamId: 10, homeScore: 1, awayScore: 0, isPlayed: true }, // AVS Çaycuma 1-0 Merzifonspor
-  { id: 'e17_2', week: 17, homeTeamId: 8,  awayTeamId: 5,  homeScore: 2, awayScore: 3, isPlayed: true }, // Sinopspor 2-3 Devrek Belediyespor
-  { id: 'e17_3', week: 17, homeTeamId: 12, awayTeamId: 14, homeScore: 0, awayScore: 0, isPlayed: true }, // Yeniçağa 0-0 Kırşehir Yetişen Yıldızlar
-  { id: 'e17_4', week: 17, homeTeamId: 3,  awayTeamId: 7,  homeScore: 2, awayScore: 1, isPlayed: true }, // Ladik Belediyespor 2-1 Turhal 60
-  { id: 'e17_5', week: 17, homeTeamId: 13, awayTeamId: 11, homeScore: 2, awayScore: 1, isPlayed: true }, // Bartınspor 2-1 ASD Eflani Spor
-  { id: 'e17_6', week: 17, homeTeamId: 2,  awayTeamId: 1,  homeScore: 1, awayScore: 0, isPlayed: true }, // Çankırı Futbol SK 1-0 Çarşambaspor
-  { id: 'e17_7', week: 17, homeTeamId: 6,  awayTeamId: 4,  homeScore: 1, awayScore: 0, isPlayed: true }, // 1930 Bafra Spor 1-0 Sorgun Belediyespor
-
-  // Week 18
+// Week 18
   { id: 'e18_1', week: 18, homeTeamId: 11, awayTeamId: 9, homeScore: null, awayScore: null, isPlayed: false }, // ASD Eflani Spor - AVS Çaycumaspor
   { id: 'e18_2', week: 18, homeTeamId: 14, awayTeamId: 13, homeScore: null, awayScore: null, isPlayed: false }, // Kırşehir Yetişen Yıldızlar - Bartınspor
   { id: 'e18_3', week: 18, homeTeamId: 10, awayTeamId: 12, homeScore: null, awayScore: null, isPlayed: false }, // Merzifonspor - Yeniçağa Spor
@@ -355,6 +208,7 @@ const EFLANI_FIXTURES = [
   { id: 'e26_5', week: 26, homeTeamId: 2, awayTeamId: 4, homeScore: null, awayScore: null, isPlayed: false }, // Çankırı Futbol SK - Sorgun Belediyespor
   { id: 'e26_6', week: 26, homeTeamId: 9, awayTeamId: 6, homeScore: null, awayScore: null, isPlayed: false }, // AVS Çaycumaspor - 1930 Bafraspor
   { id: 'e26_7', week: 26, homeTeamId: 14, awayTeamId: 5, homeScore: null, awayScore: null, isPlayed: false }, // Kırşehir Yetişen Yıldızlar - Devrek Belediyespor
+];
 ];
 
 // --- KARABÜK 1. AMATÖR A GRUBU DATA ---
@@ -460,7 +314,7 @@ export const LEAGUES: Record<string, LeagueData> = {
     name: 'Tavuk Evi Eflani Spor',
     leagueName: 'BÖLGESEL AMATÖR LİG 4. GRUP',
     shortName: 'Eflani Spor',
-    currentWeek: 17,
+    currentWeek: 18,
     targetTeamName: 'Eflani',
     instagram: '@spor_eflani',
     teams: EFLANI_TEAMS,

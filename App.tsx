@@ -5,7 +5,7 @@ import { calculateLiveStandings } from './utils';
 import { Match, Team } from './types';
 import StandingsTable from './components/StandingsTable';
 import FixtureList from './components/FixtureList';
-import { BarChart3, ArrowDown, Image, Smartphone, Calendar, Trophy, ChevronDown, CheckCircle2, X, Share, Settings, RefreshCw } from 'lucide-react';
+import { BarChart3, ArrowDown, Image, Calendar, Trophy, ChevronDown, CheckCircle2, X, Share, Settings, RefreshCw } from 'lucide-react';
 import CombinedStandingsExport from './components/CombinedStandingsExport';
 import LeagueStandingsExport from './components/LeagueStandingsExport';
 import { fetchTFFData, mapTFFStandingsToTeams, mapTFFFixturesToMatches, hasTFFSync } from './services/tffService';
@@ -359,15 +359,12 @@ const App: React.FC = () => {
                               >
                                 <RefreshCw className={`w-4 h-4 text-green-600 ${isTFFSyncing ? 'animate-spin' : ''}`} />
                                 <div className="flex flex-col">
-                                  <span>TFF'den Otomatik Güncelle</span>
+                                  <span>{isTFFSyncing ? 'Güncelleniyor…' : 'TFF\'den Otomatik Güncelle'}</span>
                                   {tffLastSync && (
-                                    <span className="text-xs text-green-600 font-medium">Son sync: {tffLastSync}</span>
+                                    <span className="text-xs text-green-600 font-medium">✓ TFF Aktif — Son: {tffLastSync}</span>
                                   )}
-                                  {tffSyncError && (
-                                    <span className="text-xs text-red-500 font-medium">Hata: {tffSyncError}</span>
-                                  )}
-                                  {tffStandings && (
-                                    <span className="text-xs text-blue-500 font-medium">✓ TFF verisi aktif</span>
+                                  {tffSyncError && !tffLastSync && (
+                                    <span className="text-xs text-red-500 font-medium">Bağlantı hatası</span>
                                   )}
                                 </div>
                               </button>
@@ -442,48 +439,37 @@ const App: React.FC = () => {
             {/* Right Column: Standings */}
             <div className={`lg:col-span-7 h-full overflow-y-auto pb-20 lg:pb-0 px-2 lg:px-0 pt-2 lg:pt-8 ${activeTab === 'standings' ? 'block' : 'hidden lg:block'}`}>
                 {/* Action Buttons */}
+                {/* Action bar: sadece TFF Güncelle butonu */}
                 <div className="flex items-center justify-end mb-4 gap-2 shrink-0">
-                    {/* TFF Sync Quick Button */}
                     {hasTFFSync(activeLeagueId) && (
                       <button
                         onClick={handleTFFSync}
                         disabled={isTFFSyncing}
                         title="TFF'den canlı güncelle"
-                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg font-bold text-xs transition-all border ${
+                        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all border shadow-sm ${
                           tffStandings
                             ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-100'
                             : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                         } ${isTFFSyncing ? 'opacity-60' : ''}`}
                       >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isTFFSyncing ? 'animate-spin' : ''}`} />
-                        <span>{tffStandings ? '✓ TFF Aktif' : 'TFF Güncelle'}</span>
+                        <RefreshCw className={`w-4 h-4 ${isTFFSyncing ? 'animate-spin' : ''}`} />
+                        <div className="flex flex-col items-start leading-tight">
+                          <span className="font-black text-xs tracking-wide">
+                            {isTFFSyncing ? 'Güncelleniyor…' : tffStandings ? '✓ TFF Aktif' : 'TFF Güncelle'}
+                          </span>
+                          {tffLastSync && !isTFFSyncing && (
+                            <span className="text-[10px] font-medium opacity-70">
+                              Son: {tffLastSync}
+                            </span>
+                          )}
+                          {tffSyncError && !isTFFSyncing && (
+                            <span className="text-[10px] font-medium text-red-500">
+                              Hata: bağlantı sorunu
+                            </span>
+                          )}
+                        </div>
                       </button>
                     )}
-                    <button 
-                    onClick={() => handleExport('post')}
-                    disabled={isDownloading}
-                    className={`flex items-center gap-2 px-3 py-2 bg-gradient-to-r ${theme.gradient} text-white rounded-lg shadow-lg transition-all transform hover:scale-105 font-bold text-xs sm:text-sm`}
-                    >
-                        {isDownloading && exportFormat === 'post' ? (
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                            <Image className="w-4 h-4" />
-                        )}
-                        <span>Gönderi (4:5)</span>
-                    </button>
-
-                    <button 
-                    onClick={() => handleExport('story')}
-                    disabled={isDownloading}
-                    className={`flex items-center gap-2 px-3 py-2 bg-gradient-to-r ${theme.gradient} text-white rounded-lg shadow-lg transition-all transform hover:scale-105 font-bold text-xs sm:text-sm opacity-90`}
-                    >
-                        {isDownloading && exportFormat === 'story' ? (
-                            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                            <Smartphone className="w-4 h-4" />
-                        )}
-                        <span>Hikaye (9:16)</span>
-                    </button>
                 </div>
 
                 <StandingsTable 
@@ -500,12 +486,17 @@ const App: React.FC = () => {
                 <div className="mt-4 bg-slate-50 border border-slate-200 p-4 rounded-lg shadow-sm shrink-0 mb-8">
                     <div className="flex items-start gap-3">
                     <div className="p-2 bg-white rounded-full shrink-0 shadow-sm">
-                        <ArrowDown className={`w-5 h-5 ${theme.iconColor}`} />
+                        <RefreshCw className={`w-5 h-5 ${theme.iconColor}`} />
                     </div>
                     <div>
-                        <h4 className="font-bold text-slate-900 text-sm">Otomatik Hesaplama</h4>
+                        <h4 className="font-bold text-slate-900 text-sm">TFF Otomatik Güncelleme</h4>
                         <p className="text-sm text-slate-600 mt-1">
-                        Fikstür sekmesinden maç sonuçlarını girdiğinizde, puan durumu anlık olarak averaj ve puan kurallarına göre yeniden hesaplanır.
+                          {hasTFFSync(activeLeagueId)
+                            ? tffStandings
+                              ? `TFF verisi aktif — ${tffLastSync ? `Son güncelleme: ${tffLastSync}` : 'sayfa açılışında çekildi'}. Yeni hafta oynandıktan sonra "TFF Güncelle" butonuna basarak puan durumu ve fikstürü otomatik olarak güncelleyebilirsiniz.`
+                              : 'TFF Güncelle butonuna basarak resmi TFF verilerini otomatik çekin. Puan durumu ve fikstür aynı anda güncellenir.'
+                            : 'Fikstür sekmesinden maç sonuçlarını girdiğinizde puan durumu anlık olarak yeniden hesaplanır.'
+                          }
                         </p>
                     </div>
                     </div>
