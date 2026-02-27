@@ -36,20 +36,34 @@ const App: React.FC = () => {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   // Load fixtures from local storage or constants when league changes
-  // Bozuk/şişmiş veri tespiti: TFF sync birikimiyle 100+ maç eklenmiş olabilir
+  // Constants değiştiğinde localStorage'ı sıfırla — versiyon kontrolü ile
   useEffect(() => {
     const league = LEAGUES[activeLeagueId];
-    // Tam tur-rövanş (tam sezon) için teorik maksimum: n*(n-1)
-    // Bu sayede eflani gibi TFF'den ekstra hafta çeken liglerde yanlış reset olmaz
+    // Constants'ın parmak izi: toplam maç sayısı + ilk/son maç ID'si
+    const constantsFingerprint = `${league.fixtures.length}_${league.fixtures[0]?.id ?? ''}_${league.fixtures[league.fixtures.length - 1]?.id ?? ''}`;
+    const fingerprintKey = `fixtures_fingerprint_${activeLeagueId}`;
+    const savedFingerprint = localStorage.getItem(fingerprintKey);
+
+    // Tam tur-rövanş için teorik maksimum: n*(n-1)
     const fullSeasonMax = league.teams.length * (league.teams.length - 1);
     const maxExpected = Math.max(league.fixtures.length * 3, fullSeasonMax + 10);
     const savedFixtures = localStorage.getItem(`fixtures_${activeLeagueId}`);
+
+    // Constants değiştiyse localStorage'ı tamamen sıfırla
+    if (savedFingerprint !== constantsFingerprint) {
+      console.log(`[App] Constants güncellenmiş (${savedFingerprint} → ${constantsFingerprint}), localStorage sıfırlanıyor.`);
+      localStorage.removeItem(`fixtures_${activeLeagueId}`);
+      localStorage.removeItem(`tff_last_auto_${activeLeagueId}`);
+      localStorage.setItem(fingerprintKey, constantsFingerprint);
+      setFixtures([...league.fixtures]);
+      return;
+    }
+
     if (savedFixtures) {
       try {
         const parsed: Match[] = JSON.parse(savedFixtures);
         if (parsed.length > maxExpected) {
-          // Bozuk veri — sıfırla ve TFF'i yeniden sync'e zorla
-          console.warn(`[TFF] Bozuk fixtures (${parsed.length} maç > beklenen ${maxExpected}), temizleniyor.`);
+          console.warn(`[TFF] Bozuk fixtures (${parsed.length} > ${maxExpected}), temizleniyor.`);
           localStorage.removeItem(`fixtures_${activeLeagueId}`);
           localStorage.removeItem(`tff_last_auto_${activeLeagueId}`);
           setFixtures([...league.fixtures]);
@@ -120,10 +134,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!hasTFFSync(activeLeagueId)) return;
 
-    const cacheKey = `tff_last_auto_${activeLeagueId}`;
-    const lastAuto = parseInt(localStorage.getItem(cacheKey) || '0', 10);
-    if (Date.now() - lastAuto < 5 * 60 * 1000) return;
-
+    // Cache yok — her lig açılışında TFF'den taze veri çek
     let cancelled = false;
     (async () => {
       try {
@@ -143,7 +154,6 @@ const App: React.FC = () => {
         const updatedFixtures = mapFixtures(data.fixtures, currentLeague.teams, baseFixtures, activeLeagueId);
         setFixtures(updatedFixtures);
         localStorage.setItem(`fixtures_${activeLeagueId}`, JSON.stringify(updatedFixtures));
-        localStorage.setItem(cacheKey, String(Date.now()));
 
         const syncTime = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
         setTffLastSync(syncTime);
