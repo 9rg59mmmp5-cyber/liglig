@@ -142,7 +142,7 @@ const EFLANI_FIXTURES = [
   { id: 'e17_5', week: 17, homeTeamId: 8, awayTeamId: 5, homeScore: 0, awayScore: 1, isPlayed: true }, // Sinop 0-1 Devrek
   { id: 'e17_6', week: 17, homeTeamId: 9, awayTeamId: 10, homeScore: 1, awayScore: 2, isPlayed: true }, // Çaycuma 1-2 Merzifon
   { id: 'e17_7', week: 17, homeTeamId: 3, awayTeamId: 7, homeScore: 1, awayScore: 0, isPlayed: true }, // Ladik 1-0 Turhal
-  { id: 'e17_8', week: 17, homeTeamId: 15, awayTeamId: 16, homeScore: 1, awayScore: 1, isPlayed: true }, // Samsun 1-1 Gümüşhane (Missing match)
+  { id: 'e17_8', week: 17, homeTeamId: 15, awayTeamId: 16, homeScore: 1, awayScore: 1, isPlayed: true }, // Samsun 1-1 Gümüşhane
 
   // Week 18
   { id: 'e18_1', week: 18, homeTeamId: 11, awayTeamId: 9, homeScore: null, awayScore: null, isPlayed: false }, // ASD Eflani Spor - AVS Çaycumaspor
