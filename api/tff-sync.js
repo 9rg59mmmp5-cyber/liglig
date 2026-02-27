@@ -156,13 +156,13 @@ function parseFixtures(html) {
     if (weekNumber > 50) continue;
     const weekHtml = weekMatch[2];
 
-    const matchRegex = /kulupId=(\d+)[^>]*>([^<]+)<\/a>\s*<\/td>\s*<td[^>]*>\s*<a[^>]*macId[^>]*>([^<]+)<\/a>\s*<\/td>\s*<td[^>]*>.*?kulupId=(\d+)[^>]*>([^<]+)<\/a>/gi;
+    const matchRegex = /<tr[^>]*>[\s\S]*?kulupId=(\d+)[^>]*>([^<]+)<\/a>[\s\S]*?<a[^>]*macId[^>]*>([\s\S]*?)<\/a>[\s\S]*?kulupId=(\d+)[^>]*>([^<]+)<\/a>/gi;
     let mr;
 
     while ((mr = matchRegex.exec(weekHtml)) !== null) {
       const homeKulupId = parseInt(mr[1], 10);
       const homeTeam   = mr[2].trim();
-      const scoreRaw   = mr[3].trim();
+      const scoreRaw   = mr[3].replace(/<[^>]+>/g, '').trim();
       const awayKulupId = parseInt(mr[4], 10);
       const awayTeam   = mr[5].trim();
 

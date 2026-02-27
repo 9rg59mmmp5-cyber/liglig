@@ -262,8 +262,16 @@ function resolveTeamId(
 ): number | undefined {
   const fromMap = kulupMap[kulupId];
   if (fromMap) return fromMap;
+
   // Haritada yok → isim eşleştirme (güvenli fallback)
-  return findMatchingTeam(teamName, localTeams)?.id;
+  const matched = findMatchingTeam(teamName, localTeams);
+  if (matched) {
+    console.log(`[TFF Match] ${teamName} (ID: ${kulupId}) -> ${matched.name} (ID: ${matched.id})`);
+    return matched.id;
+  }
+  
+  console.warn(`[TFF Missing] Takım eşleşmedi: ${teamName} (ID: ${kulupId})`);
+  return undefined;
 }
 
 // ─── İsim normalize & eşleştirme (fallback) ──────────────────────────────────
