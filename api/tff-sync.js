@@ -1,170 +1,54 @@
 // Vercel Serverless Function — TFF Resmi Site Veri Çekici
-// TFF BAL (pageID=1596) için iki adımlı GET→POST yaklaşımı kullanılır.
-// Debug modu: ?debug=html → ham HTML'i döner; ?debug=fields → form alanlarını listeler
+// Kaynak: https://www.tff.org (BAL Puan Cetveli ve Fikstür)
+//
+// KEŞİF (debug=fields): TFF BAL sayfasında dropdown yok, navigasyon direkt URL ile.
+// Puan cetveli zaten ilk GET yanıtında geliyor (hasPuanCetveli: true).
+// Hafta navigasyonu da GET parametresi ile: ?pageID=1596&grupID=3304&hafta=18
+//
+// Bu nedenle POST/ViewState gerekmez. Sadece GET + doğru parser yeterli.
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-  res.setHeader('Cache-Control', 'no-cache');   // debug sırasında cache istemiyoruz
+  res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
   if (req.method === 'OPTIONS') return res.status(200).end();
 
-  const grupID   = req.query.grupID   || '3304';
-  const pageID   = req.query.pageID   || '1596';
-  const hafta    = parseInt(req.query.hafta || '1', 10);
-  const debugMode = req.query.debug   || '';  // 'html' | 'fields' | 'post' | ''
+  const grupID    = req.query.grupID  || '3304';
+  const pageID    = req.query.pageID  || '1596';
+  const hafta     = parseInt(req.query.hafta || '1', 10);
+  const debugMode = req.query.debug   || '';  // 'html' | ''
 
-  const BASE_HEADERS = {
+  // Grup navigasyonu için TFF'nin kullandığı URL formatı
+  // ~/Default.aspx?pageID=1596&grupID=3304 → sayfa açıldığında güncel haftayı gösterir
+  // ~/Default.aspx?pageID=1596&grupID=3304&hafta=18 → belirli hafta
+  const url = `https://www.tff.org/Default.aspx?pageID=${pageID}&grupID=${grupID}&hafta=${hafta}`;
+
+  const headers = {
     'User-Agent':      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    'Accept':          'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept':          'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
     'Accept-Language': 'tr-TR,tr;q=0.9,en;q=0.5',
+    'Referer':         'https://www.tff.org/Default.aspx?pageID=981',
     'Connection':      'keep-alive',
   };
 
-  const isBAL = pageID === '1596' || pageID === '981';
-  const pageUrl = `https://www.tff.org/Default.aspx?pageID=${pageID}`;
-
   try {
-    // ── Adım 1: İlk GET — ViewState + form alanlarını al ────────────────────
-    const step1 = await fetch(pageUrl, {
-      headers: { ...BASE_HEADERS, 'Referer': 'https://www.tff.org/default.aspx?pageID=981' },
-      redirect: 'follow',
-    });
+    const resp = await fetch(url, { headers, redirect: 'follow' });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status} — ${url}`);
 
-    if (!step1.ok) throw new Error(`Step1 HTTP ${step1.status} — ${pageUrl}`);
+    const html = decodeW1254(await resp.arrayBuffer());
 
-    const html1   = decodeW1254(await step1.arrayBuffer());
-    const cookies = extractCookies(step1.headers.get('set-cookie'));
-
-    // Debug: ham HTML döndür
+    // Debug: ham HTML'i döndür
     if (debugMode === 'html') {
+      // Puan Cetveli bölümünü bul ve 3000 char göster
+      const puanIdx = html.indexOf('Puan Cetveli');
       return res.status(200).json({
-        debug: 'html',
-        step: 'step1_GET',
-        url: pageUrl,
-        htmlLength: html1.length,
-        // İlk 8000 char — form alanlarını görmek için yeterli
-        htmlPreview: html1.substring(0, 8000),
-        cookies,
+        debug: 'html', url, htmlLength: html.length,
+        puanSection: puanIdx >= 0 ? html.substring(puanIdx, puanIdx + 3000) : 'BULUNAMADI',
+        fixtureSection: (() => {
+          const i = html.indexOf('.Hafta');
+          return i >= 0 ? html.substring(Math.max(0, i - 50), i + 2000) : 'BULUNAMADI';
+        })(),
       });
-    }
-
-    // Form alanlarını bul
-    const fields = extractAllFormFields(html1);
-
-    // Debug: form alanlarını listele
-    if (debugMode === 'fields') {
-      return res.status(200).json({
-        debug: 'fields',
-        url: pageUrl,
-        htmlLength: html1.length,
-        fields,
-        cookies: cookies ? 'var' : 'yok',
-        // Dropdown'ları ara
-        dropdowns: html1.match(/<select[^>]*name="([^"]+)"[^>]*>/gi) || [],
-        hasPuanCetveli: html1.includes('Puan Cetveli'),
-        hasGrupID: html1.includes('3304'),
-        hasHafta: html1.includes('ddl') || html1.includes('Hafta'),
-      });
-    }
-
-    const vs    = fields['__VIEWSTATE']          || '';
-    const vsGen = fields['__VIEWSTATEGENERATOR'] || '';
-    const evVal = fields['__EVENTVALIDATION']    || '';
-    const prev  = fields['__PREVIOUSPAGE']       || '';
-
-    // ── Adım 2: POST — grup + hafta seç ─────────────────────────────────────
-    // TFF BAL sayfasında dropdown control adlarını keşfetmek için fields kullanıyoruz
-    const grupField  = findDropdownName(fields, ['ddlGrup', 'Grup', 'grup']) || 'ctl00$ContentPlaceHolder1$ddlGrup';
-    const haftaField = findDropdownName(fields, ['ddlHafta', 'Hafta', 'hafta']) || 'ctl00$ContentPlaceHolder1$ddlHafta';
-
-    const formData = new URLSearchParams();
-    if (vs)    formData.append('__VIEWSTATE',          vs);
-    if (vsGen) formData.append('__VIEWSTATEGENERATOR', vsGen);
-    if (evVal) formData.append('__EVENTVALIDATION',    evVal);
-    if (prev)  formData.append('__PREVIOUSPAGE',       prev);
-
-    // UpdatePanel postback için ScriptManager
-    formData.append('__EVENTTARGET',   haftaField);
-    formData.append('__EVENTARGUMENT', '');
-    formData.append('ctl00$ScriptManager1', `ctl00$ContentPlaceHolder1$UpdatePanel1|${haftaField}`);
-
-    formData.append(grupField,  grupID);
-    formData.append(haftaField, String(hafta));
-
-    // Debug: POST sonucunu döndür
-    if (debugMode === 'post') {
-      const step2 = await fetch(pageUrl, {
-        method: 'POST',
-        headers: {
-          ...BASE_HEADERS,
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'X-Requested-With': 'XMLHttpRequest',
-          'Referer':      pageUrl,
-          'Origin':       'https://www.tff.org',
-          ...(cookies ? { 'Cookie': cookies } : {}),
-        },
-        body: formData.toString(),
-        redirect: 'follow',
-      });
-      const html2 = decodeW1254(await step2.arrayBuffer());
-      return res.status(200).json({
-        debug: 'post',
-        postStatus: step2.status,
-        html2Length: html2.length,
-        html2Preview: html2.substring(0, 6000),
-        grupField, haftaField,
-        hasPuanCetveli: html2.includes('Puan Cetveli'),
-        hasKulupId: html2.includes('kulupId'),
-        formDataSent: formData.toString().substring(0, 500),
-      });
-    }
-
-    // ── Normal mod: POST yap, parse et ──────────────────────────────────────
-    let html;
-
-    if (isBAL) {
-      // POST dene
-      const step2 = await fetch(pageUrl, {
-        method: 'POST',
-        headers: {
-          ...BASE_HEADERS,
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'X-Requested-With': 'XMLHttpRequest',
-          'Referer':      pageUrl,
-          'Origin':       'https://www.tff.org',
-          ...(cookies ? { 'Cookie': cookies } : {}),
-        },
-        body: formData.toString(),
-        redirect: 'follow',
-      });
-
-      const html2 = decodeW1254(await step2.arrayBuffer());
-
-      // POST'tan veri geldiyse kullan
-      if (html2.includes('kulupId') && html2.length > 5000) {
-        html = html2;
-      } else {
-        // Fallback: cookie ile doğrudan GET
-        const directUrl = `https://www.tff.org/Default.aspx?pageID=${pageID}&grupID=${grupID}&hafta=${hafta}`;
-        const step3 = await fetch(directUrl, {
-          headers: {
-            ...BASE_HEADERS,
-            'Referer': pageUrl,
-            ...(cookies ? { 'Cookie': cookies } : {}),
-          },
-          redirect: 'follow',
-        });
-        html = decodeW1254(await step3.arrayBuffer());
-      }
-    } else {
-      // Nesine 3. Lig ve diğerleri — GET yeterli
-      const url = `https://www.tff.org/Default.aspx?pageID=${pageID}&grupID=${grupID}&hafta=${hafta}`;
-      const r   = await fetch(url, {
-        headers: { ...BASE_HEADERS, 'Referer': 'https://www.tff.org/default.aspx?pageID=971' },
-        redirect: 'follow',
-      });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      html = decodeW1254(await r.arrayBuffer());
     }
 
     const standings = parseStandings(html);
@@ -176,24 +60,23 @@ export default async function handler(req, res) {
       lastUpdated: new Date().toISOString(),
       standings, fixtures,
       _debug: {
+        url,
         htmlLength:     html.length,
         standingsCount: standings.length,
         fixturesCount:  fixtures.length,
         puanIdx:        html.indexOf('Puan Cetveli'),
         fixtureIdx:     html.indexOf('Hafta'),
-        isBAL,
-        // Eğer başarısız olduysa tarayıcı devtools F12 > Network'ten form alanlarını kontrol et
-        hint: !success ? `DEBUG için: /api/tff-sync?pageID=${pageID}&grupID=${grupID}&hafta=${hafta}&debug=fields` : undefined,
+        hint: !success
+          ? `Parser sorunu olabilir. Ham HTML için: ${url}&debug=html ekle`
+          : undefined,
       },
     });
 
   } catch (err) {
     return res.status(200).json({
-      success: false, error: err.message,
-      _debug: {
-        pageID, grupID, hafta, isBAL,
-        debugHint: `Hata detayı için: /api/tff-sync?pageID=${pageID}&grupID=${grupID}&hafta=${hafta}&debug=html`,
-      },
+      success: false,
+      error: err.message,
+      _debug: { url, grupID, pageID, hafta },
     });
   }
 }
@@ -212,78 +95,85 @@ function decodeW1254(buf) {
   return s;
 }
 
-// ─── Tüm form hidden alanlarını çıkart ──────────────────────────────────────
-function extractAllFormFields(html) {
-  const fields = {};
-  for (const m of html.matchAll(/name="([^"]+)"[^>]*value="([^"]*)"/gi)) {
-    fields[m[1]] = m[2];
-  }
-  return fields;
-}
-
-// ─── Dropdown adını bul ──────────────────────────────────────────────────────
-function findDropdownName(fields, keywords) {
-  for (const key of Object.keys(fields)) {
-    for (const kw of keywords) {
-      if (key.toLowerCase().includes(kw.toLowerCase())) return key;
-    }
-  }
-  return null;
-}
-
-// ─── Set-Cookie → cookie string ──────────────────────────────────────────────
-function extractCookies(setCookieHeader) {
-  if (!setCookieHeader) return '';
-  return setCookieHeader
-    .split(/,(?=[^;]+=[^;]+;|[^;]+=)/)
-    .map(c => c.split(';')[0].trim())
-    .join('; ');
-}
-
 // ─── PUAN DURUMU PARSER ──────────────────────────────────────────────────────
+// TFF BAL sayfası yapısı (debug=fields keşfinden):
+//   - "Puan Cetveli" başlığı var
+//   - Gol Krallığı tablosu kisiId + kulupId içeriyor → bunlar atlanmalı
+//   - Puan cetveli tablosu sadece kulupId içeriyor, 8+ sayısal sütun var
 function parseStandings(html) {
   const results = [];
 
-  let tableHtml = tableAfterText(html, ['Puan Cetveli', 'PUAN CETVELİ', 'PUAN DURUMU']);
+  // "Puan Cetveli" başlığından sonraki ilk kulupId'li tabloyu al
+  let tableHtml = tableAfterKeyword(html, [
+    'Puan Cetveli',
+    'PUAN CETVELİ',
+    'PUAN DURUMU',
+    'puancetveli',
+    'PuanCetveli',
+  ]);
 
+  // Fallback: Gol Krallığı dışında kalan (kisiId olmayan) ilk büyük kulupId tablosu
   if (!tableHtml) {
     for (const m of html.matchAll(/<table[\s\S]*?<\/table>/gi)) {
       const t = m[0];
-      if (t.includes('kulupId') && !t.includes('kisiId') && !t.includes('kisiID')) {
-        const count = (t.match(/kulupId=/gi) || []).length;
-        if (count >= 8) { tableHtml = t; break; }
-      }
+      if (!t.includes('kulupId')) continue;
+      if (t.includes('kisiId') || t.includes('kisiID')) continue;  // gol krallığı → atla
+      const count = (t.match(/kulupId=/gi) || []).length;
+      if (count >= 8) { tableHtml = t; break; }
     }
   }
 
   if (!tableHtml) return results;
 
+  // Gol krallığı sayfasında gelen tablolar arasında puan durumu tablosunu bul
+  // Satır yapısı: kulupId → takım adı → 8 sayısal sütun (O/G/B/M/AG/YG/A/P)
   const rowRe = /kulupId=(\d+)[^>]*>([\s\S]*?)<\/a>[\s\S]*?<\/td>([\s\S]*?)<\/tr>/gi;
   let m, rank = 1;
 
   while ((m = rowRe.exec(tableHtml)) !== null) {
     const kulupId = parseInt(m[1], 10);
-    const rawName = clean(m[2]).replace(/^\d+\.\s*/, '').replace(/^\d+\s+/, '').trim();
+
+    // Takım adını temizle (sıra numarası öneki kaldır: "1. Çarşamba" → "Çarşamba")
+    const rawName = clean(m[2])
+      .replace(/^\d+\.\s*/, '')
+      .replace(/^\d+\s+/, '')
+      .trim();
+
     if (!rawName || rawName.length < 2) continue;
+
     const nums = tdNums(m[3]);
+
+    // TFF puan cetveli sütun sırası: O G B M AG YG A P (8 sütun)
     if (nums.length >= 8) {
       results.push({
-        rank: rank++, kulupId,
+        rank: rank++,
+        kulupId,
         name: toTitle(rawName),
-        played: nums[0], won: nums[1], drawn: nums[2], lost: nums[3],
-        gf: nums[4], ga: nums[5], gd: nums[6], pts: nums[7],
+        played: nums[0],
+        won:    nums[1],
+        drawn:  nums[2],
+        lost:   nums[3],
+        gf:     nums[4],
+        ga:     nums[5],
+        gd:     nums[6],
+        pts:    nums[7],
       });
     }
   }
+
   return results;
 }
 
 // ─── FİKSTÜR PARSER ─────────────────────────────────────────────────────────
 function parseFixtures(html) {
   const results = [];
+
+  // TFF'de her hafta için ayrı sayfa çekildiğinden tek hafta verisi gelir.
+  // Ancak bazı sayfalarda birden fazla hafta bloğu olabilir.
   const sec = fixtureSection(html);
   if (!sec) return results;
 
+  // "17.Hafta", "17. Hafta", "17. HAFTA" gibi formatlar
   const wRe = /(\d{1,2})\.\s*Hafta([\s\S]*?)(?=\d{1,2}\.\s*Hafta|$)/gi;
   let wm;
   while ((wm = wRe.exec(sec)) !== null) {
@@ -291,22 +181,31 @@ function parseFixtures(html) {
     if (wk < 1 || wk > 50) continue;
     results.push(...weekFixtures(wm[2], wk));
   }
+
   return results;
 }
 
 function weekFixtures(weekHtml, week) {
   const out = [];
+
   for (const trm of weekHtml.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)) {
-    const row  = trm[1];
+    const row = trm[1];
+
+    // Her satırda ev takımı + deplasman kulupId'si olmalı
     const kIds = [...row.matchAll(/kulupId=(\d+)/gi)].map(m => parseInt(m[1], 10));
     if (kIds.length < 2) continue;
-    const home = kIds[0], away = kIds[kIds.length - 1];
+
+    const home = kIds[0];
+    const away = kIds[kIds.length - 1];
     if (home === away) continue;
 
+    // Takım adları
     const tNames   = [...row.matchAll(/kulupId=\d+[^>]*>([\s\S]*?)<\/a>/gi)].map(m => clean(m[1]));
-    const homeName = tNames[0] || '', awayName = tNames[tNames.length - 1] || '';
+    const homeName = tNames[0]              || '';
+    const awayName = tNames[tNames.length - 1] || '';
     if (!homeName || !awayName) continue;
 
+    // Skor — "macId" linkinde "3-1" formatında gelir
     const sm = row.match(/macId[^>]*>([\s\S]*?)<\/a>/i);
     let hScore = null, aScore = null, played = false;
     if (sm) {
@@ -317,52 +216,80 @@ function weekFixtures(weekHtml, week) {
 
     out.push({
       week,
-      homeKulupId: home, homeTeamName: toTitle(homeName),
-      awayKulupId: away, awayTeamName: toTitle(awayName),
-      homeScore: hScore, awayScore: aScore, isPlayed: played,
+      homeKulupId:  home,
+      homeTeamName: toTitle(homeName),
+      awayKulupId:  away,
+      awayTeamName: toTitle(awayName),
+      homeScore: hScore,
+      awayScore: aScore,
+      isPlayed:  played,
     });
   }
+
   return out;
 }
 
-// ─── Yardımcı ────────────────────────────────────────────────────────────────
-function tableAfterText(html, needles) {
-  for (const n of needles) {
-    const i = html.toLowerCase().indexOf(n.toLowerCase());
-    if (i === -1) continue;
-    const tm = html.substring(i).match(/<table[\s\S]*?<\/table>/i);
+// ─── Yardımcı ─────────────────────────────────────────────────────────────────
+
+// Belirli bir anahtar kelimenin hemen ardından gelen kulupId'li tabloyu bul
+function tableAfterKeyword(html, needles) {
+  for (const needle of needles) {
+    const idx = html.toLowerCase().indexOf(needle.toLowerCase());
+    if (idx === -1) continue;
+    const after = html.substring(idx);
+    const tm    = after.match(/<table[\s\S]*?<\/table>/i);
     if (tm && tm[0].includes('kulupId')) return tm[0];
   }
   return null;
 }
 
+// Fikstür bölümünün başlangıcını bul
 function fixtureSection(html) {
-  const markers = ['Fikstür Listesi', 'FİKSTÜR', '1.Hafta', '1. Hafta', 'fikstür'];
+  const markers = [
+    'Fikstür Listesi', 'FİKSTÜR LİSTESİ',
+    'fikstür', 'Fikstür',
+    '1.Hafta', '1. Hafta', '1. HAFTA',
+  ];
   for (const mk of markers) {
     const i = html.indexOf(mk);
     if (i !== -1) return html.substring(i);
   }
-  const tm = /\d+\.\s*Hafta/i.exec(html);
+  // Son çare: ilk "X.Hafta" ifadesi
+  const tm = /\d{1,2}\.\s*Hafta/i.exec(html);
   return tm ? html.substring(tm.index) : null;
 }
 
+// HTML tag'larını ve boşlukları temizle
 function clean(s) {
-  return (s || '').replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+  return (s || '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
+// TD içindeki sayısal değerleri topla
 function tdNums(tdHtml) {
   const out = [];
   for (const tm of tdHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)) {
-    const v = clean(tm[1]).replace(/\*/g, '');
+    const v = clean(tm[1]).replace(/\*/g, '').trim();
     if (/^-?\d+$/.test(v)) out.push(parseInt(v, 10));
   }
   return out;
 }
 
+// Title case — Türkçe karakterlere duyarlı
 function toTitle(s) {
   if (!s) return s;
-  return s.toLowerCase()
+  return s
+    .toLowerCase()
     .replace(/(?:^|\s|\.|-)\S/g, c => c.toUpperCase())
-    .replace(/\bve\b/g, 've').replace(/\ba\.ş\./gi, 'A.Ş.').replace(/\bfk\b/gi, 'FK').replace(/\bsk\b/gi, 'SK')
+    .replace(/\bve\b/g, 've')
+    .replace(/\ba\.ş\./gi, 'A.Ş.')
+    .replace(/\bfk\b/gi, 'FK')
+    .replace(/\bsk\b/gi, 'SK')
     .trim();
 }
