@@ -127,12 +127,10 @@ const App: React.FC = () => {
     let cancelled = false;
     (async () => {
       try {
-        const { fetchTFFData, fetchTFFDataQuick, needsFullAutoSync, mapTFFStandingsToTeams: mapStandings, mapTFFFixturesToMatches: mapFixtures } = await import('./services/tffService');
+        const { fetchTFFData, mapTFFStandingsToTeams: mapStandings, mapTFFFixturesToMatches: mapFixtures } = await import('./services/tffService');
         if (cancelled) return;
-        // BAL gibi tüm haftaları çekmesi gereken ligler için fetchTFFData,
-        // Nesine 3. Lig gibi sadece son hafta yeterli olanlar için fetchTFFDataQuick
-        const fetchFn = needsFullAutoSync(activeLeagueId) ? fetchTFFData : fetchTFFDataQuick;
-        const data = await fetchFn(activeLeagueId);
+        // Her zaman tam senkronizasyon: puan durumu + tüm haftaların fikstürü (1..maxHafta)
+        const data = await fetchTFFData(activeLeagueId);
         if (cancelled || !data?.success) return;
 
         // Puan durumunu TFF'den doğrudan al

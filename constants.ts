@@ -1,24 +1,25 @@
 import { LeagueData } from './types';
 
 // --- KARABÜK İDMAN YURDU DATA (TFF 3. LİG 3. GRUP) ---
-// Updated based on Week 21 Image
+// Kaynak: tff.org, Hafta 22 puan cetveli (27.02.2026 itibariyle)
+// NOT: Bu başlangıç verisi — TFF Sync ile otomatik güncellenir
 const KARABUK_TEAMS = [
-  { id: 1, name: "Sebat Gençlik Spor", played: 21, won: 15, drawn: 6, lost: 0, gf: 45, ga: 16, gd: 29, pts: 51, form: [] },
-  { id: 2, name: "52 Orduspor FK", played: 21, won: 14, drawn: 3, lost: 4, gf: 52, ga: 20, gd: 32, pts: 45, form: [] },
-  { id: 3, name: "Fatsa Belediyespor", played: 21, won: 12, drawn: 3, lost: 6, gf: 27, ga: 19, gd: 8, pts: 39, form: [] },
-  { id: 4, name: "Yozgat Belediye Bozokspor", played: 21, won: 11, drawn: 4, lost: 6, gf: 43, ga: 21, gd: 22, pts: 37, form: [] },
-  { id: 5, name: "TCH Group Zonguldakspor", played: 21, won: 10, drawn: 5, lost: 6, gf: 34, ga: 17, gd: 17, pts: 35, form: [] },
-  { id: 6, name: "KDZ. Ereğli Belediye Spor", played: 21, won: 9, drawn: 8, lost: 4, gf: 29, ga: 23, gd: 6, pts: 35, form: [] },
-  { id: 7, name: "Düzce Cam Düzce Spor", played: 21, won: 8, drawn: 5, lost: 8, gf: 24, ga: 25, gd: -1, pts: 29, form: [] },
-  { id: 8, name: "Pazar Spor", played: 21, won: 7, drawn: 7, lost: 7, gf: 20, ga: 25, gd: -5, pts: 28, form: [] },
-  { id: 9, name: "Tokat Belediye Spor", played: 21, won: 7, drawn: 5, lost: 9, gf: 21, ga: 24, gd: -3, pts: 26, form: [] },
-  { id: 10, name: "1926 Bulancakspor", played: 21, won: 6, drawn: 5, lost: 10, gf: 22, ga: 37, gd: -15, pts: 23, form: [] },
-  { id: 11, name: "Orduspor 1967 A.Ş", played: 21, won: 5, drawn: 7, lost: 9, gf: 21, ga: 35, gd: -14, pts: 22, form: [] },
-  { id: 12, name: "Karabük İdman Yurdu Spor", played: 21, won: 6, drawn: 4, lost: 11, gf: 20, ga: 38, gd: -18, pts: 22, form: [] },
-  { id: 13, name: "Amasya Spor FK", played: 21, won: 5, drawn: 5, lost: 11, gf: 18, ga: 31, gd: -13, pts: 20, form: [] },
-  { id: 14, name: "Artvin Hopaspor", played: 21, won: 5, drawn: 4, lost: 12, gf: 20, ga: 33, gd: -13, pts: 19, form: [] },
-  { id: 15, name: "Çayeli Spor Kulübü", played: 21, won: 3, drawn: 8, lost: 10, gf: 17, ga: 31, gd: -14, pts: 17, form: [] },
-  { id: 16, name: "Giresun Spor", played: 21, won: 3, drawn: 5, lost: 13, gf: 19, ga: 37, gd: -18, pts: 14, form: [] },
+  { id: 1,  name: "Sebat Gençlik Spor",           played: 22, won: 16, drawn: 6, lost: 0,  gf: 46, ga: 16, gd: 30,  pts: 54, form: [] },
+  { id: 2,  name: "52 Orduspor FK",                played: 22, won: 14, drawn: 3, lost: 5,  gf: 52, ga: 21, gd: 31,  pts: 45, form: [] },
+  { id: 3,  name: "Fatsa Belediyespor",            played: 22, won: 12, drawn: 3, lost: 7,  gf: 27, ga: 21, gd: 6,   pts: 39, form: [] },
+  { id: 4,  name: "Yozgat Belediye Bozokspor",     played: 22, won: 11, drawn: 5, lost: 6,  gf: 44, ga: 22, gd: 22,  pts: 38, form: [] },
+  { id: 5,  name: "TCH Group Zonguldakspor",       played: 22, won: 11, drawn: 5, lost: 6,  gf: 38, ga: 17, gd: 21,  pts: 38, form: [] },
+  { id: 6,  name: "KDZ. Ereğli Belediye Spor",     played: 22, won: 10, drawn: 8, lost: 4,  gf: 30, ga: 23, gd: 7,   pts: 38, form: [] },
+  { id: 8,  name: "Pazarspor",                     played: 22, won: 8,  drawn: 7, lost: 7,  gf: 22, ga: 25, gd: -3,  pts: 31, form: [] },
+  { id: 7,  name: "Düzce Cam Düzcespor",           played: 22, won: 8,  drawn: 5, lost: 9,  gf: 24, ga: 27, gd: -3,  pts: 29, form: [] },
+  { id: 9,  name: "Tokat Belediye Spor",           played: 22, won: 7,  drawn: 5, lost: 10, gf: 21, ga: 25, gd: -4,  pts: 26, form: [] },
+  { id: 11, name: "Orduspor 1967 A.Ş.",            played: 22, won: 6,  drawn: 7, lost: 9,  gf: 23, ga: 35, gd: -12, pts: 25, form: [] },
+  { id: 12, name: "Karabük İdman Yurdu Spor",      played: 22, won: 7,  drawn: 4, lost: 11, gf: 21, ga: 38, gd: -17, pts: 25, form: [] },
+  { id: 10, name: "1926 Bulancakspor",             played: 22, won: 6,  drawn: 5, lost: 11, gf: 22, ga: 41, gd: -19, pts: 23, form: [] },
+  { id: 14, name: "Artvin Hopaspor",               played: 22, won: 6,  drawn: 4, lost: 12, gf: 23, ga: 33, gd: -10, pts: 22, form: [] },
+  { id: 13, name: "Amasya Spor FK",                played: 22, won: 5,  drawn: 6, lost: 11, gf: 19, ga: 32, gd: -13, pts: 21, form: [] },
+  { id: 15, name: "Çayeli Spor Kulübü",            played: 22, won: 3,  drawn: 8, lost: 11, gf: 17, ga: 32, gd: -15, pts: 17, form: [] },
+  { id: 16, name: "Giresunspor",                   played: 22, won: 3,  drawn: 5, lost: 14, gf: 19, ga: 40, gd: -21, pts: 14, form: [] },
 ];
 
 const KARABUK_FIXTURES = [
@@ -134,15 +135,14 @@ const EFLANI_TEAMS = [
 ];
 
 const EFLANI_FIXTURES = [
-  // Week 17
-  { id: 'e17_1', week: 17, homeTeamId: 13, awayTeamId: 11, homeScore: 0, awayScore: 2, isPlayed: true }, // Bartınspor 0-2 Eflani
-  { id: 'e17_2', week: 17, homeTeamId: 6, awayTeamId: 4, homeScore: 2, awayScore: 1, isPlayed: true }, // Bafra 2-1 Sorgun
-  { id: 'e17_3', week: 17, homeTeamId: 2, awayTeamId: 1, homeScore: 2, awayScore: 1, isPlayed: true }, // Çankırı 2-1 Çarşamba
-  { id: 'e17_4', week: 17, homeTeamId: 12, awayTeamId: 14, homeScore: 2, awayScore: 1, isPlayed: true }, // Yeniçağa 2-1 Kırşehir
-  { id: 'e17_5', week: 17, homeTeamId: 8, awayTeamId: 5, homeScore: 0, awayScore: 1, isPlayed: true }, // Sinop 0-1 Devrek
-  { id: 'e17_6', week: 17, homeTeamId: 9, awayTeamId: 10, homeScore: 1, awayScore: 2, isPlayed: true }, // Çaycuma 1-2 Merzifon
-  { id: 'e17_7', week: 17, homeTeamId: 3, awayTeamId: 7, homeScore: 1, awayScore: 0, isPlayed: true }, // Ladik 1-0 Turhal
-  { id: 'e17_8', week: 17, homeTeamId: 15, awayTeamId: 16, homeScore: 1, awayScore: 1, isPlayed: true }, // Samsun 1-1 Gümüşhane
+  // Week 17 — Kaynak: TFF 22.02.2026
+  { id: 'e17_1', week: 17, homeTeamId: 9,  awayTeamId: 10, homeScore: 1, awayScore: 0, isPlayed: true }, // AVS Çaycuma 1-0 Merzifonspor
+  { id: 'e17_2', week: 17, homeTeamId: 8,  awayTeamId: 5,  homeScore: 2, awayScore: 3, isPlayed: true }, // Sinopspor 2-3 Devrek Belediyespor
+  { id: 'e17_3', week: 17, homeTeamId: 12, awayTeamId: 14, homeScore: 0, awayScore: 0, isPlayed: true }, // Yeniçağa 0-0 Kırşehir Yetişen Yıldızlar
+  { id: 'e17_4', week: 17, homeTeamId: 3,  awayTeamId: 7,  homeScore: 2, awayScore: 1, isPlayed: true }, // Ladik Belediyespor 2-1 Turhal 60
+  { id: 'e17_5', week: 17, homeTeamId: 13, awayTeamId: 11, homeScore: 2, awayScore: 1, isPlayed: true }, // Bartınspor 2-1 ASD Eflani Spor
+  { id: 'e17_6', week: 17, homeTeamId: 2,  awayTeamId: 1,  homeScore: 1, awayScore: 0, isPlayed: true }, // Çankırı Futbol SK 1-0 Çarşambaspor
+  { id: 'e17_7', week: 17, homeTeamId: 6,  awayTeamId: 4,  homeScore: 1, awayScore: 0, isPlayed: true }, // 1930 Bafra Spor 1-0 Sorgun Belediyespor
 
   // Week 18
   { id: 'e18_1', week: 18, homeTeamId: 11, awayTeamId: 9, homeScore: null, awayScore: null, isPlayed: false }, // ASD Eflani Spor - AVS Çaycumaspor
@@ -329,7 +329,7 @@ export const LEAGUES: Record<string, LeagueData> = {
     name: 'Tavuk Evi Eflani Spor',
     leagueName: 'BÖLGESEL AMATÖR LİG 4. GRUP',
     shortName: 'Eflani Spor',
-    currentWeek: 16,
+    currentWeek: 17,
     targetTeamName: 'Eflani',
     instagram: '@spor_eflani',
     teams: EFLANI_TEAMS,
@@ -350,7 +350,7 @@ export const LEAGUES: Record<string, LeagueData> = {
     name: 'Karabük İdman Yurdu',
     leagueName: 'TFF 3. LİG 3. GRUP',
     shortName: 'KİY',
-    currentWeek: 22,
+    currentWeek: 23,
     targetTeamName: 'Karabük İdman Yurdu',
     instagram: '@karabukidmanyurduspor',
     teams: KARABUK_TEAMS,

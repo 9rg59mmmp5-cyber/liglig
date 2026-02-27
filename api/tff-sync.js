@@ -1,11 +1,18 @@
 // Vercel Serverless Function — TFF Resmi Site Veri Çekici
-// Kaynak: https://www.tff.org (BAL Puan Cetveli ve Fikstür)
+// Kaynak: https://www.tff.org
 //
-// KEŞİF (debug=fields): TFF BAL sayfasında dropdown yok, navigasyon direkt URL ile.
-// Puan cetveli zaten ilk GET yanıtında geliyor (hasPuanCetveli: true).
-// Hafta navigasyonu da GET parametresi ile: ?pageID=1596&grupID=3304&hafta=18
+// HTML Yapısı (Analiz edildi):
 //
-// Bu nedenle POST/ViewState gerekmez. Sadece GET + doğru parser yeterli.
+// PUAN CETVELİ: <a href="...kulupID=10580...">KARABÜK İDMANYURDU</a>
+//   - kulupID (büyük ID) ile linkler
+//   - Tabloda sütun sırası: O G B M A Y AV P
+//
+// FİKSTÜR LİSTESİ: <a href="...kulupId=10580...">KARABÜK İDMANYURDU</a>
+//   - kulupId (büyük Id) ile linkler
+//   - Skor: <a href="...macId=285551...">3 - 1</a> ya da "-" (oynanmadı)
+//   - Format: "1.Hafta", "2.Hafta" blokları
+//
+// GOL KRALLĞI (filtrele): hem kisiID hem kulupID içerir
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,11 +23,8 @@ export default async function handler(req, res) {
   const grupID    = req.query.grupID  || '3304';
   const pageID    = req.query.pageID  || '1596';
   const hafta     = parseInt(req.query.hafta || '1', 10);
-  const debugMode = req.query.debug   || '';  // 'html' | ''
+  const debugMode = req.query.debug   || '';
 
-  // Grup navigasyonu için TFF'nin kullandığı URL formatı
-  // ~/Default.aspx?pageID=1596&grupID=3304 → sayfa açıldığında güncel haftayı gösterir
-  // ~/Default.aspx?pageID=1596&grupID=3304&hafta=18 → belirli hafta
   const url = `https://www.tff.org/Default.aspx?pageID=${pageID}&grupID=${grupID}&hafta=${hafta}`;
 
   const headers = {
@@ -37,22 +41,22 @@ export default async function handler(req, res) {
 
     const html = decodeW1254(await resp.arrayBuffer());
 
-    // Debug: ham HTML'i döndür
     if (debugMode === 'html') {
-      // Puan Cetveli bölümünü bul ve 3000 char göster
-      const puanIdx = html.indexOf('Puan Cetveli');
+      const pcIdx  = html.indexOf('Puan Cetveli');
+      const flIdx  = html.indexOf('Fikstür Listesi');
+      const hafIdx = html.search(/\d{1,2}\.Hafta/);
       return res.status(200).json({
         debug: 'html', url, htmlLength: html.length,
-        puanSection: puanIdx >= 0 ? html.substring(puanIdx, puanIdx + 3000) : 'BULUNAMADI',
-        fixtureSection: (() => {
-          const i = html.indexOf('.Hafta');
-          return i >= 0 ? html.substring(Math.max(0, i - 50), i + 2000) : 'BULUNAMADI';
-        })(),
+        puanCetveliIdx: pcIdx,
+        fixtureListesiIdx: flIdx,
+        ilkHaftaIdx: hafIdx,
+        puanSection: pcIdx >= 0 ? html.substring(pcIdx, pcIdx + 3000) : 'BULUNAMADI',
+        fixtureSection: hafIdx >= 0 ? html.substring(Math.max(0,hafIdx-100), hafIdx + 2000) : 'BULUNAMADI',
       });
     }
 
     const standings = parseStandings(html);
-    const fixtures  = parseFixtures(html);
+    const fixtures  = parseFixtures(html, hafta);
     const success   = standings.length > 0 || fixtures.length > 0;
 
     return res.status(200).json({
@@ -64,8 +68,6 @@ export default async function handler(req, res) {
         htmlLength:     html.length,
         standingsCount: standings.length,
         fixturesCount:  fixtures.length,
-        puanIdx:        html.indexOf('Puan Cetveli'),
-        fixtureIdx:     html.indexOf('Hafta'),
         hint: !success
           ? `Parser sorunu olabilir. Ham HTML için: ${url}&debug=html ekle`
           : undefined,
@@ -96,41 +98,36 @@ function decodeW1254(buf) {
 }
 
 // ─── PUAN DURUMU PARSER ──────────────────────────────────────────────────────
-// TFF BAL sayfası gerçek yapısı (debug analizi):
-//   - "Puan Cetveli" metni idx=65'te → navigasyon linki, tablo değil
-//   - Gerçek puan cetveli tablosu sayfanın ortasında ayrı bir yerde
-//   - Tüm tabloları tarayıp en çok kulupId satırı içereni alıyoruz
-//   - Gol Krallığı tablosu kisiId + kulupId içerdiğinden hariç tutulur
+// TFF sayfasında puan cetveli: kulupID (büyük ID) parametresi ile link içeriyor
+// Gol Krallığı: hem kisiID hem kulupID içeriyor → filtrele
 function parseStandings(html) {
   const results = [];
 
-  // Tüm tabloları tara — en çok kulupId'li satıra sahip,
-  // kisiId içermeyen tabloyu bul (= puan cetveli)
   let bestTable = null;
   let bestCount = 0;
 
   for (const m of html.matchAll(/<table[\s\S]*?<\/table>/gi)) {
     const t = m[0];
-    if (!t.includes('kulupId')) continue;
-    // Gol krallığı tablosu → atla (hem kisiId hem kulupId içerir)
-    if (t.includes('kisiId') || t.includes('kisiID')) continue;
-    const count = (t.match(/kulupId=/gi) || []).length;
-    if (count > bestCount) {
-      bestCount = count;
+    // Gol krallığı kisiID içerir → atla
+    if (t.includes('kisiID') || t.includes('kisiId')) continue;
+    // Puan cetveli kulupID içerir
+    const countBig = (t.match(/kulupID=/gi) || []).length;
+    if (countBig > bestCount) {
+      bestCount = countBig;
       bestTable = t;
     }
   }
 
   if (!bestTable) return results;
 
-  // Satır ayrıştırma: kulupId → takım adı → istatistik sütunları → </tr>
-  const rowRe = /kulupId=(\d+)[^>]*>([\s\S]*?)<\/a>[\s\S]*?<\/td>([\s\S]*?)<\/tr>/gi;
-  let m, rank = 1;
+  // Satır parse: kulupID=XXXX link içeren satırlar
+  const rowRe = /kulupID=(\d+)[^>]*>([\s\S]*?)<\/a>([\s\S]*?)<\/tr>/gi;
+  let m;
+  let rank = 1;
 
   while ((m = rowRe.exec(bestTable)) !== null) {
     const kulupId = parseInt(m[1], 10);
 
-    // Takım adını temizle ("1. Çarşamba" → "Çarşamba")
     const rawName = clean(m[2])
       .replace(/^\d+\.\s*/, '')
       .replace(/^\d+\s+/, '')
@@ -138,9 +135,9 @@ function parseStandings(html) {
 
     if (!rawName || rawName.length < 2) continue;
 
+    // TD içindeki sayıları topla (O G B M A Y AV P sırası)
     const nums = tdNums(m[3]);
 
-    // TFF sütun sırası: O G B M AG YG A P (en az 8 sütun)
     if (nums.length >= 8) {
       results.push({
         rank:   rank++,
@@ -162,64 +159,74 @@ function parseStandings(html) {
 }
 
 // ─── FİKSTÜR PARSER ─────────────────────────────────────────────────────────
-function parseFixtures(html) {
+// TFF'de fikstür hem "Fikstür" hafta linkleri sayfasında,
+// hem de "Fikstür Listesi" bölümünde tüm haftalar birden gösterilebilir.
+//
+// kulupId (küçük 'd') → fikstür için
+// macId → skor linki
+function parseFixtures(html, requestedWeek) {
   const results = [];
 
-  // TFF'de her hafta için ayrı sayfa çekildiğinden tek hafta verisi gelir.
-  // Ancak bazı sayfalarda birden fazla hafta bloğu olabilir.
-  const sec = fixtureSection(html);
-  if (!sec) return results;
+  // Önce "Fikstür Listesi" bölümünü bulmaya çalış
+  const fixtureListIdx = html.indexOf('Fikstür Listesi');
+  const startIdx = fixtureListIdx >= 0 ? fixtureListIdx : 0;
+  const fixtureHtml = html.substring(startIdx);
 
-  // "17.Hafta", "17. Hafta", "17. HAFTA" gibi formatlar
-  const wRe = /(\d{1,2})\.\s*Hafta([\s\S]*?)(?=\d{1,2}\.\s*Hafta|$)/gi;
+  // Hafta bloklarını bul
+  const weekRegex = /(\d{1,2})\.\s*Hafta([\s\S]*?)(?=\d{1,2}\.\s*Hafta|$)/gi;
   let wm;
-  while ((wm = wRe.exec(sec)) !== null) {
+
+  while ((wm = weekRegex.exec(fixtureHtml)) !== null) {
     const wk = parseInt(wm[1], 10);
     if (wk < 1 || wk > 50) continue;
-    results.push(...weekFixtures(wm[2], wk));
+    const weekFixs = parseWeekBlock(wm[2], wk);
+    results.push(...weekFixs);
   }
 
   return results;
 }
 
-function weekFixtures(weekHtml, week) {
+function parseWeekBlock(weekHtml, week) {
   const out = [];
 
   for (const trm of weekHtml.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)) {
     const row = trm[1];
 
-    // Her satırda ev takımı + deplasman kulupId'si olmalı
-    const kIds = [...row.matchAll(/kulupId=(\d+)/gi)].map(m => parseInt(m[1], 10));
-    if (kIds.length < 2) continue;
+    // kulupId (küçük d) linklerini bul — fikstüre özgü
+    const kulupLinks = [...row.matchAll(/kulupId=(\d+)[^>]*>([\s\S]*?)<\/a>/gi)];
+    if (kulupLinks.length < 2) continue;
 
-    const home = kIds[0];
-    const away = kIds[kIds.length - 1];
-    if (home === away) continue;
+    const homeKulupId  = parseInt(kulupLinks[0][1], 10);
+    const homeName     = clean(kulupLinks[0][2]);
+    const awayKulupId  = parseInt(kulupLinks[kulupLinks.length - 1][1], 10);
+    const awayName     = clean(kulupLinks[kulupLinks.length - 1][2]);
 
-    // Takım adları
-    const tNames   = [...row.matchAll(/kulupId=\d+[^>]*>([\s\S]*?)<\/a>/gi)].map(m => clean(m[1]));
-    const homeName = tNames[0]              || '';
-    const awayName = tNames[tNames.length - 1] || '';
     if (!homeName || !awayName) continue;
+    if (homeKulupId === awayKulupId) continue;
 
-    // Skor — "macId" linkinde "3-1" formatında gelir
-    const sm = row.match(/macId[^>]*>([\s\S]*?)<\/a>/i);
-    let hScore = null, aScore = null, played = false;
-    if (sm) {
-      const txt = clean(sm[1]).replace(/\s/g, '');
-      const sp  = /^(\d+)-(\d+)$/.exec(txt);
-      if (sp) { hScore = +sp[1]; aScore = +sp[2]; played = true; }
+    // Skor: macId linki içindeki metin
+    let homeScore = null, awayScore = null, isPlayed = false;
+
+    const macLinkMatch = row.match(/macId=\d+[^>]*>([\s\S]*?)<\/a>/i);
+    if (macLinkMatch) {
+      const scoreTxt = clean(macLinkMatch[1]).replace(/\s+/g, '');
+      const scoreMatch = /^(\d+)-(\d+)$/.exec(scoreTxt);
+      if (scoreMatch) {
+        homeScore = parseInt(scoreMatch[1], 10);
+        awayScore = parseInt(scoreMatch[2], 10);
+        isPlayed  = true;
+      }
     }
 
     out.push({
       week,
-      homeKulupId:  home,
+      homeKulupId,
       homeTeamName: toTitle(homeName),
-      awayKulupId:  away,
+      awayKulupId,
       awayTeamName: toTitle(awayName),
-      homeScore: hScore,
-      awayScore: aScore,
-      isPlayed:  played,
+      homeScore,
+      awayScore,
+      isPlayed,
     });
   }
 
@@ -227,36 +234,6 @@ function weekFixtures(weekHtml, week) {
 }
 
 // ─── Yardımcı ─────────────────────────────────────────────────────────────────
-
-// Belirli bir anahtar kelimenin hemen ardından gelen kulupId'li tabloyu bul
-function tableAfterKeyword(html, needles) {
-  for (const needle of needles) {
-    const idx = html.toLowerCase().indexOf(needle.toLowerCase());
-    if (idx === -1) continue;
-    const after = html.substring(idx);
-    const tm    = after.match(/<table[\s\S]*?<\/table>/i);
-    if (tm && tm[0].includes('kulupId')) return tm[0];
-  }
-  return null;
-}
-
-// Fikstür bölümünün başlangıcını bul
-function fixtureSection(html) {
-  const markers = [
-    'Fikstür Listesi', 'FİKSTÜR LİSTESİ',
-    'fikstür', 'Fikstür',
-    '1.Hafta', '1. Hafta', '1. HAFTA',
-  ];
-  for (const mk of markers) {
-    const i = html.indexOf(mk);
-    if (i !== -1) return html.substring(i);
-  }
-  // Son çare: ilk "X.Hafta" ifadesi
-  const tm = /\d{1,2}\.\s*Hafta/i.exec(html);
-  return tm ? html.substring(tm.index) : null;
-}
-
-// HTML tag'larını ve boşlukları temizle
 function clean(s) {
   return (s || '')
     .replace(/<[^>]+>/g, '')
@@ -268,25 +245,22 @@ function clean(s) {
     .trim();
 }
 
-// TD içindeki sayısal değerleri topla
 function tdNums(tdHtml) {
   const out = [];
   for (const tm of tdHtml.matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)) {
-    const v = clean(tm[1]).replace(/\*/g, '').trim();
+    const v = clean(tm[1]).replace(/\*/g, '').replace(/\s/g, '').trim();
     if (/^-?\d+$/.test(v)) out.push(parseInt(v, 10));
   }
   return out;
 }
 
-// Title case — Türkçe karakterlere duyarlı (İ/i karışıklığı düzeltildi)
 function toTitle(s) {
   if (!s) return s;
-  // Önce Türkçe büyük/küçük harf dönüşümü — locale-aware
-  const lower = s.replace(/İ/g, 'i').replace(/I/g, 'ı').toLowerCase()
-                 .replace(/\bi\b/g, 'i');  // tek başına i harfi korunur
+  const lower = s
+    .replace(/İ/g, 'i').replace(/I/g, 'ı')
+    .toLowerCase();
   return lower
     .replace(/(^|[\s.\-\/])(\S)/g, (_, pre, ch) => {
-      // ı → I, i → İ (Türkçe büyük harf kuralı)
       if (ch === 'i') return pre + 'İ';
       if (ch === 'ı') return pre + 'I';
       return pre + ch.toUpperCase();
