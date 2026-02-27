@@ -96,44 +96,41 @@ function decodeW1254(buf) {
 }
 
 // ─── PUAN DURUMU PARSER ──────────────────────────────────────────────────────
-// TFF BAL sayfası yapısı (debug=fields keşfinden):
-//   - "Puan Cetveli" başlığı var
-//   - Gol Krallığı tablosu kisiId + kulupId içeriyor → bunlar atlanmalı
-//   - Puan cetveli tablosu sadece kulupId içeriyor, 8+ sayısal sütun var
+// TFF BAL sayfası gerçek yapısı (debug analizi):
+//   - "Puan Cetveli" metni idx=65'te → navigasyon linki, tablo değil
+//   - Gerçek puan cetveli tablosu sayfanın ortasında ayrı bir yerde
+//   - Tüm tabloları tarayıp en çok kulupId satırı içereni alıyoruz
+//   - Gol Krallığı tablosu kisiId + kulupId içerdiğinden hariç tutulur
 function parseStandings(html) {
   const results = [];
 
-  // "Puan Cetveli" başlığından sonraki ilk kulupId'li tabloyu al
-  let tableHtml = tableAfterKeyword(html, [
-    'Puan Cetveli',
-    'PUAN CETVELİ',
-    'PUAN DURUMU',
-    'puancetveli',
-    'PuanCetveli',
-  ]);
+  // Tüm tabloları tara — en çok kulupId'li satıra sahip,
+  // kisiId içermeyen tabloyu bul (= puan cetveli)
+  let bestTable = null;
+  let bestCount = 0;
 
-  // Fallback: Gol Krallığı dışında kalan (kisiId olmayan) ilk büyük kulupId tablosu
-  if (!tableHtml) {
-    for (const m of html.matchAll(/<table[\s\S]*?<\/table>/gi)) {
-      const t = m[0];
-      if (!t.includes('kulupId')) continue;
-      if (t.includes('kisiId') || t.includes('kisiID')) continue;  // gol krallığı → atla
-      const count = (t.match(/kulupId=/gi) || []).length;
-      if (count >= 8) { tableHtml = t; break; }
+  for (const m of html.matchAll(/<table[\s\S]*?<\/table>/gi)) {
+    const t = m[0];
+    if (!t.includes('kulupId')) continue;
+    // Gol krallığı tablosu → atla (hem kisiId hem kulupId içerir)
+    if (t.includes('kisiId') || t.includes('kisiID')) continue;
+    const count = (t.match(/kulupId=/gi) || []).length;
+    if (count > bestCount) {
+      bestCount = count;
+      bestTable = t;
     }
   }
 
-  if (!tableHtml) return results;
+  if (!bestTable) return results;
 
-  // Gol krallığı sayfasında gelen tablolar arasında puan durumu tablosunu bul
-  // Satır yapısı: kulupId → takım adı → 8 sayısal sütun (O/G/B/M/AG/YG/A/P)
+  // Satır ayrıştırma: kulupId → takım adı → istatistik sütunları → </tr>
   const rowRe = /kulupId=(\d+)[^>]*>([\s\S]*?)<\/a>[\s\S]*?<\/td>([\s\S]*?)<\/tr>/gi;
   let m, rank = 1;
 
-  while ((m = rowRe.exec(tableHtml)) !== null) {
+  while ((m = rowRe.exec(bestTable)) !== null) {
     const kulupId = parseInt(m[1], 10);
 
-    // Takım adını temizle (sıra numarası öneki kaldır: "1. Çarşamba" → "Çarşamba")
+    // Takım adını temizle ("1. Çarşamba" → "Çarşamba")
     const rawName = clean(m[2])
       .replace(/^\d+\.\s*/, '')
       .replace(/^\d+\s+/, '')
@@ -143,12 +140,12 @@ function parseStandings(html) {
 
     const nums = tdNums(m[3]);
 
-    // TFF puan cetveli sütun sırası: O G B M AG YG A P (8 sütun)
+    // TFF sütun sırası: O G B M AG YG A P (en az 8 sütun)
     if (nums.length >= 8) {
       results.push({
-        rank: rank++,
+        rank:   rank++,
         kulupId,
-        name: toTitle(rawName),
+        name:   toTitle(rawName),
         played: nums[0],
         won:    nums[1],
         drawn:  nums[2],
@@ -281,15 +278,24 @@ function tdNums(tdHtml) {
   return out;
 }
 
-// Title case — Türkçe karakterlere duyarlı
+// Title case — Türkçe karakterlere duyarlı (İ/i karışıklığı düzeltildi)
 function toTitle(s) {
   if (!s) return s;
-  return s
-    .toLowerCase()
-    .replace(/(?:^|\s|\.|-)\S/g, c => c.toUpperCase())
-    .replace(/\bve\b/g, 've')
+  // Önce Türkçe büyük/küçük harf dönüşümü — locale-aware
+  const lower = s.replace(/İ/g, 'i').replace(/I/g, 'ı').toLowerCase()
+                 .replace(/\bi\b/g, 'i');  // tek başına i harfi korunur
+  return lower
+    .replace(/(^|[\s.\-\/])(\S)/g, (_, pre, ch) => {
+      // ı → I, i → İ (Türkçe büyük harf kuralı)
+      if (ch === 'i') return pre + 'İ';
+      if (ch === 'ı') return pre + 'I';
+      return pre + ch.toUpperCase();
+    })
+    .replace(/\bve\b/gi, 've')
     .replace(/\ba\.ş\./gi, 'A.Ş.')
     .replace(/\bfk\b/gi, 'FK')
     .replace(/\bsk\b/gi, 'SK')
+    .replace(/\basd\b/gi, 'ASD')
+    .replace(/\bavs\b/gi, 'AVS')
     .trim();
 }
