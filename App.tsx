@@ -34,6 +34,7 @@ const App: React.FC = () => {
   
   // New state for image preview modal
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewFormat, setPreviewFormat] = useState<'post' | 'story' | null>(null);
 
   // Load fixtures from local storage or constants when league changes
   // Constants değiştiğinde localStorage'ı sıfırla — versiyon kontrolü ile
@@ -162,7 +163,9 @@ const App: React.FC = () => {
     return () => { cancelled = true; };
   }, [activeLeagueId, currentLeague.teams, currentLeague.fixtures]);
 
-  // Recalculate standings — TFF verisi varsa onu kullan
+  // Recalculate standings
+  // TFF sync olan liglerde (karabük, eflani): TFF verisi gelince onu kullan
+  // TFF yok / sync başarısız: fixtures üzerinden sıfırdan hesapla
   const liveTeams = useMemo(() => {
     if (tffStandings && tffStandings.length > 0) return tffStandings;
     return calculateLiveStandings(currentLeague.teams, fixtures);
@@ -214,7 +217,6 @@ const App: React.FC = () => {
     setIsDownloading(true);
     setExportFormat(format);
 
-    // Give React time to render the specific layout (post/story) before capturing
     setTimeout(async () => {
       try {
           const element = document.getElementById('standings-table-capture');
@@ -223,47 +225,15 @@ const App: React.FC = () => {
           const canvas = await html2canvas(element, {
               scale: 2,
               useCORS: true,
-              backgroundColor: null, // Transparent background handled by CSS
+              backgroundColor: null,
               logging: false,
           });
 
           const dataUrl = canvas.toDataURL('image/png');
 
-          // 1. Try Native Web Share API (Mobile Experience)
-          if (navigator.share) {
-            try {
-                const blob = await (await fetch(dataUrl)).blob();
-                const file = new File([blob], `${currentLeague.id}-puan-durumu.png`, { type: 'image/png' });
-                
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({
-                        files: [file],
-                        title: 'Puan Durumu',
-                        text: `${currentLeague.leagueName} Puan Durumu`,
-                    });
-                    setIsDownloading(false);
-                    setExportFormat(null);
-                    return; // Success, exit
-                }
-            } catch (shareError) {
-                console.log("Share API cancelled or failed, falling back to download/preview", shareError);
-                // Continue to fallback
-            }
-          }
-
-          // 2. Fallback: Show Preview Modal (Best for iOS PWA if Share fails)
-          // or Desktop Download
-          const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-          
-          if (isMobile) {
-              setPreviewImage(dataUrl);
-          } else {
-              // Desktop: Direct Download
-              const link = document.createElement('a');
-              link.href = dataUrl;
-              link.download = `${currentLeague.id}-puan-durumu-${format}.png`;
-              link.click();
-          }
+          // Her platformda önizleme modal'ı göster
+          setPreviewImage(dataUrl);
+          setPreviewFormat(format);
 
       } catch (err) {
           console.error("Görsel oluşturulamadı", err);
@@ -272,7 +242,7 @@ const App: React.FC = () => {
           setIsDownloading(false);
           setExportFormat(null);
       }
-    }, 150); // Increased timeout slightly for better rendering
+    }, 150);
   };
 
   // Theme constants shortcut
@@ -559,55 +529,125 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* Image Preview Modal (Fallback for Mobile if Share fails) */}
+      {/* ─── Görsel Önizleme Modal ─── */}
       {previewImage && (
-        <div className="fixed inset-0 z-[60] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="bg-white rounded-2xl max-w-sm w-full overflow-hidden shadow-2xl relative">
-                {/* Modal Header */}
-                <div className="p-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                    <h3 className="font-bold text-slate-800">Görsel Hazır</h3>
-                    <button 
-                        onClick={() => setPreviewImage(null)}
-                        className="p-1 hover:bg-slate-200 rounded-full transition-colors"
-                    >
-                        <X className="w-6 h-6 text-slate-500" />
-                    </button>
-                </div>
-                
-                {/* Image Area */}
-                <div className="p-6 flex flex-col items-center bg-slate-100">
-                    <img src={previewImage} alt="Generated Standings" className="w-full h-auto rounded shadow-lg border border-white/20" />
-                    <p className="mt-4 text-xs text-center text-slate-500 font-medium">
-                        Görseli kaydetmek veya paylaşmak için üzerine <span className="text-slate-800 font-bold">basılı tutun</span>.
-                    </p>
-                </div>
-
-                {/* Modal Actions */}
-                <div className="p-4 border-t border-slate-100 flex gap-3">
-                     <button 
-                        onClick={() => {
-                             // Try share again manually
-                             fetch(previewImage)
-                                .then(res => res.blob())
-                                .then(blob => {
-                                    const file = new File([blob], "puan-durumu.png", { type: "image/png" });
-                                    if(navigator.share) navigator.share({ files: [file] });
-                                })
-                                .catch(() => alert("Paylaşım desteklenmiyor, lütfen resme basılı tutup kaydedin."));
-                        }}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-white shadow-lg ${theme.primary}`}
-                    >
-                        <Share className="w-4 h-4" />
-                        Paylaş
-                    </button>
-                    <button 
-                        onClick={() => setPreviewImage(null)}
-                        className="flex-1 py-3 rounded-xl font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-colors"
-                    >
-                        Kapat
-                    </button>
-                </div>
+        <div 
+          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center animate-in fade-in duration-200"
+          style={{ background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)' }}
+          onClick={(e) => { if (e.target === e.currentTarget) { setPreviewImage(null); setPreviewFormat(null); } }}
+        >
+          <div className="w-full sm:max-w-md bg-white rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-2xl animate-in slide-in-from-bottom-4 sm:slide-in-from-bottom-0 duration-300">
+            
+            {/* Drag Handle (mobile) */}
+            <div className="flex justify-center pt-3 pb-1 sm:hidden">
+              <div className="w-10 h-1 bg-slate-300 rounded-full" />
             </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full bg-green-500 animate-pulse`} />
+                <span className="font-bold text-slate-800 text-sm">
+                  Görsel Hazır — {previewFormat === 'story' ? '9:16 Hikaye' : '4:5 Gönderi'}
+                </span>
+              </div>
+              <button 
+                onClick={() => { setPreviewImage(null); setPreviewFormat(null); }}
+                className="p-1.5 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+
+            {/* Image Preview */}
+            <div className="bg-slate-900 flex items-center justify-center p-4 relative" style={{ maxHeight: '50vh', overflow: 'hidden' }}>
+              <img 
+                src={previewImage} 
+                alt="Puan Durumu Görseli" 
+                className="max-h-[46vh] w-auto object-contain rounded-lg shadow-2xl ring-1 ring-white/10"
+                style={{ maxWidth: '100%' }}
+              />
+              {/* Mobile long-press hint */}
+              <div className="absolute bottom-3 left-0 right-0 flex justify-center sm:hidden">
+                <span className="bg-black/60 text-white text-[10px] px-3 py-1 rounded-full font-medium backdrop-blur-sm">
+                  Görsele basılı tutarak kaydedin
+                </span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="p-4 space-y-3">
+              {/* Primary: Share */}
+              <button
+                onClick={async () => {
+                  try {
+                    const blob = await (await fetch(previewImage)).blob();
+                    const filename = `${currentLeague.id}-puan-durumu-${previewFormat}.png`;
+                    const file = new File([blob], filename, { type: 'image/png' });
+                    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                      await navigator.share({
+                        files: [file],
+                        title: `${currentLeague.leagueName} Puan Durumu`,
+                        text: `${currentLeague.leagueName} — ${dynamicWeek}. Hafta Puan Durumu`,
+                      });
+                    } else {
+                      alert('Paylaşım bu cihazda desteklenmiyor. Görseli indirip paylaşabilirsiniz.');
+                    }
+                  } catch (e) {
+                    if ((e as Error).name !== 'AbortError') {
+                      alert('Paylaşım iptal edildi veya hata oluştu.');
+                    }
+                  }
+                }}
+                className={`w-full flex items-center justify-center gap-2.5 py-3.5 rounded-xl font-bold text-white text-sm shadow-lg transition-all active:scale-95 bg-gradient-to-r ${theme.gradient}`}
+              >
+                <Share className="w-4 h-4" />
+                Paylaş
+              </button>
+
+              {/* Secondary row: Download + Copy */}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    const link = document.createElement('a');
+                    link.href = previewImage;
+                    link.download = `${currentLeague.id}-puan-durumu-${previewFormat}.png`;
+                    link.click();
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-slate-700 text-sm bg-slate-100 hover:bg-slate-200 transition-all active:scale-95 border border-slate-200"
+                >
+                  <ArrowDown className="w-4 h-4" />
+                  İndir
+                </button>
+                <button
+                  onClick={() => {
+                    (async () => {
+                      try {
+                        const blob = await (await fetch(previewImage)).blob();
+                        await navigator.clipboard.write([
+                          new ClipboardItem({ 'image/png': blob })
+                        ]);
+                        alert('Görsel panoya kopyalandı!');
+                      } catch {
+                        alert('Panoya kopyalama bu tarayıcıda desteklenmiyor.');
+                      }
+                    })();
+                  }}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-slate-700 text-sm bg-slate-100 hover:bg-slate-200 transition-all active:scale-95 border border-slate-200"
+                >
+                  <Image className="w-4 h-4" />
+                  Kopyala
+                </button>
+                <button
+                  onClick={() => { setPreviewImage(null); setPreviewFormat(null); }}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-slate-500 text-sm bg-slate-50 hover:bg-slate-100 transition-all active:scale-95 border border-slate-200"
+                >
+                  <X className="w-4 h-4" />
+                  Kapat
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
