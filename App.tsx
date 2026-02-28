@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import html2canvas from 'html2canvas';
 import { LEAGUES } from './constants';
 import { calculateLiveStandings } from './utils';
@@ -36,6 +36,10 @@ const App: React.FC = () => {
   // New state for image preview modal
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [previewFormat, setPreviewFormat] = useState<'post' | 'story' | null>(null);
+
+  // Auto-save refs
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const initialLoadDoneRef = useRef(false);
 
   // Load fixtures from local storage or constants when league changes
   // Constants değiştiğinde localStorage'ı sıfırla — versiyon kontrolü ile
@@ -91,6 +95,22 @@ const App: React.FC = () => {
     }
   };
 
+  // ─── Skor değiştiğinde otomatik kaydet (800ms debounce) ─────────────────────
+  useEffect(() => {
+    // İlk yüklemede kaydetme (localStorage'dan okunan veriyi tekrar yazmaya gerek yok)
+    if (!initialLoadDoneRef.current) {
+      initialLoadDoneRef.current = true;
+      return;
+    }
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      try {
+        localStorage.setItem(`fixtures_${activeLeagueId}`, JSON.stringify(fixtures));
+      } catch (_) { /* sessizce geç */ }
+    }, 800);
+    return () => { if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current); };
+  }, [fixtures, activeLeagueId]);
+
   // TFF / ASKF senkronizasyon handler (manuel tam güncelleme)
   const handleTFFSync = useCallback(async () => {
     if (isTFFSyncing) return;
@@ -139,7 +159,16 @@ const App: React.FC = () => {
       const syncTime = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
       setTffLastSync(syncTime);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Bilinmeyen hata';
+      let message = 'Bilinmeyen hata';
+      if (err instanceof Error) {
+        if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError') || err.message.includes('fetch')) {
+          message = 'Sunucuya bağlanılamadı — internet bağlantınızı kontrol edin';
+        } else if (err.message.includes('AbortError') || err.message.includes('zaman aşımı')) {
+          message = 'Bağlantı zaman aşımına uğradı — tekrar deneyin';
+        } else {
+          message = err.message;
+        }
+      }
       setTffSyncError(message);
       console.error('Sync hatası:', err);
     } finally {
@@ -153,6 +182,7 @@ const App: React.FC = () => {
     setManualWeek(null);
     setTffLastSync(null);
     setTffSyncError(null);
+    initialLoadDoneRef.current = false;
   }, [activeLeagueId]);
 
   // TFF/ASKF destekli ligde otomatik çek (lig açılınca)
@@ -497,8 +527,12 @@ const App: React.FC = () => {
                             </span>
                           )}
                           {tffSyncError && !isTFFSyncing && (
-                            <span className="text-[10px] font-medium text-red-500">
-                              Hata: bağlantı sorunu
+                            <span 
+                              className="text-[10px] font-medium text-red-500 cursor-pointer hover:underline"
+                              onClick={(e) => { e.stopPropagation(); setTffSyncError(null); handleTFFSync(); }}
+                              title="Tekrar denemek için tıklayın"
+                            >
+                              ⚠ {tffSyncError.length > 40 ? tffSyncError.slice(0, 40) + '…' : tffSyncError} (↻)
                             </span>
                           )}
                         </div>

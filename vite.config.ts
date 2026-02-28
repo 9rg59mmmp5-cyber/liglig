@@ -38,6 +38,30 @@ export default defineConfig(({ mode }) => {
   };
 });
 
+async function fetchWithRetry(url: string, options: any = {}, retries = 2, timeoutMs = 15000): Promise<Response> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timer);
+      if (!res.ok && attempt < retries) {
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        continue;
+      }
+      return res;
+    } catch (err: any) {
+      clearTimeout(timer);
+      if (attempt >= retries) {
+        if (err.name === 'AbortError') throw new Error(`Bağlantı zaman aşımına uğradı (${timeoutMs / 1000}s)`);
+        throw err;
+      }
+      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+    }
+  }
+  throw new Error('Bağlantı kurulamadı');
+}
+
 function tffApiPlugin() {
   return {
     name: 'tff-api',
@@ -62,7 +86,7 @@ function tffApiPlugin() {
         }
 
         try {
-          const response = await fetch(tffUrl, {
+          const response = await fetchWithRetry(tffUrl, {
             headers: {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
               'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -110,7 +134,7 @@ function tffApiPlugin() {
         }
 
         try {
-          const response = await fetch(askfUrl, {
+          const response = await fetchWithRetry(askfUrl, {
             headers: {
               'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
               'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',

@@ -40,9 +40,18 @@ export interface AmatorSyncResult {
 
 // ─── API çağrısı ─────────────────────────────────────────────────────────────
 export async function fetchAmatorData(): Promise<AmatorSyncResult> {
-  const response = await fetch('/api/amator-sync');
-  if (!response.ok) throw new Error(`API hatası: ${response.status}`);
-  return await response.json() as AmatorSyncResult;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20000);
+  try {
+    const response = await fetch('/api/amator-sync', { signal: controller.signal });
+    clearTimeout(timer);
+    if (!response.ok) throw new Error(`API hatası: ${response.status}`);
+    return await response.json() as AmatorSyncResult;
+  } catch (err: any) {
+    clearTimeout(timer);
+    if (err.name === 'AbortError') throw new Error('ASKF bağlantısı zaman aşımına uğradı');
+    throw err;
+  }
 }
 
 // ─── Puan durumu eşleştirme ─────────────────────────────────────────────────

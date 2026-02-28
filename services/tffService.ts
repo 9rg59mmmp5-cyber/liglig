@@ -82,9 +82,18 @@ export interface TFFSyncResult {
 // ─── API çağrıları ─────────────────────────────────────────────────────────────
 async function fetchTFFWeek(grupID: string, pageID: string, hafta: number): Promise<TFFSyncResult> {
   const params = new URLSearchParams({ grupID, pageID, hafta: String(hafta) });
-  const response = await fetch(`/api/tff-sync?${params}`);
-  if (!response.ok) throw new Error(`API hatası: ${response.status}`);
-  return await response.json() as TFFSyncResult;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 20000);
+  try {
+    const response = await fetch(`/api/tff-sync?${params}`, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!response.ok) throw new Error(`API hatası: ${response.status}`);
+    return await response.json() as TFFSyncResult;
+  } catch (err: any) {
+    clearTimeout(timer);
+    if (err.name === 'AbortError') throw new Error('TFF bağlantısı zaman aşımına uğradı');
+    throw err;
+  }
 }
 
 /**

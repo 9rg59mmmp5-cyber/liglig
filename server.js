@@ -8,6 +8,31 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = 5000;
 
+// ─── Timeout + Retry fetch helper ────────────────────────────────────────────
+async function fetchWithRetry(url, options = {}, retries = 2, timeoutMs = 15000) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timer);
+      if (!res.ok && attempt < retries) {
+        await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+        continue;
+      }
+      return res;
+    } catch (err) {
+      clearTimeout(timer);
+      if (attempt >= retries) {
+        if (err.name === 'AbortError') throw new Error(`Bağlantı zaman aşımına uğradı (${timeoutMs / 1000}s)`);
+        throw err;
+      }
+      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+    }
+  }
+  throw new Error('Bağlantı kurulamadı');
+}
+
 app.use(express.json({ limit: '20mb' }));
 app.use(express.static(path.join(__dirname, 'dist')));
 
@@ -60,7 +85,7 @@ app.get('/api/tff-sync', async (req, res) => {
   const url = `https://www.tff.org/Default.aspx?pageID=${pageID}&grupID=${grupID}&hafta=${hafta}`;
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchWithRetry(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; SporKarabuk/1.0)',
         'Accept': 'text/html,application/xhtml+xml',
@@ -99,7 +124,7 @@ app.get('/api/amator-sync', async (req, res) => {
   const url = 'https://karabukaskf.com/kategori/9/1-amator';
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchWithRetry(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
