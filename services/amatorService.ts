@@ -129,7 +129,47 @@ export function mapAmatorFixturesToMatches(
   return updatedMatches;
 }
 
+// ─── ASKF → Local isim eşleştirme haritası ──────────────────────────────────
+// ASKF sitesindeki isimler ile constants.ts'deki isimler farklı olabiliyor.
+// Bu harita kesin eşleştirme sağlar.
+const ASKF_NAME_ALIASES: Record<string, string> = {
+  // A Grubu
+  'eskipazar belediyespor':   'Eskipazar Belediyespor',
+  'safranbolu bağlarspor':    'Safranbolu Bağlarspor',
+  'yeşil yenice spor':        'Yeşil Yenicespor',
+  'karabük anadolu gsk':      'Anadolu Gençlikspor',
+  'karabük anadolu gençlik':  'Anadolu Gençlikspor',
+  'karabük 3 nisan spor':     'Esentepe 3 Nisan Spor',
+  'karabük 3 nisan':          'Esentepe 3 Nisan Spor',
+  'beşbinevlergücüspor':      'Beşbinevler Gücüspor',
+  'besbinevlergücüspor':      'Beşbinevler Gücüspor',
+  '78 bozkurt spor kulübü':   'Bozkurt 78 Spor',
+  '78 bozkurt spor':          'Bozkurt 78 Spor',
+  // B Grubu
+  'yortanspor':               'Yortanspor',
+  'safranbolu spor':          'Safranboluspor',
+  'safranboluspor':           'Safranboluspor',
+  'rüzgarlı fk':              'Rüzgarlı FK',
+  'rüzgarlı':                 'Rüzgarlı FK',
+  '5000 evler spor':          '5000 Evlerspor',
+  '5000 evlerspor':           '5000 Evlerspor',
+  'burunsuz karabükgücüspor': 'Burunsuz Karabükgücü',
+  'burunsuz karabükgücü':     'Burunsuz Karabükgücü',
+  'k.gençlerbirliği spor':    'Karabük Gençlerbirliği',
+  'karabük gençlerbirliği':   'Karabük Gençlerbirliği',
+  'k.gençlerbirligi spor':    'Karabük Gençlerbirliği',
+  'karabük birlik spor':      'Karabük Birlikspor',
+  'karabük birlikspor':       'Karabük Birlikspor',
+};
+
 // ─── İsim normalize & eşleştirme ─────────────────────────────────────────────
+function normalizeForLookup(name: string): string {
+  return name
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function normalizeName(name: string): string {
   return name
     .toUpperCase()
@@ -139,38 +179,54 @@ function normalizeName(name: string): string {
     .replace(/\bBELEDIYESI\b/g, 'BELEDIYE')
     .replace(/\bBELEDIYESPOR\b/g, 'BELEDIYE SPOR')
     .replace(/\bKULUBU\b/g, '').replace(/\bFK\b/g, '')
-    .replace(/\bGUCU\b/g, 'GUCU')
+    .replace(/\bGSK\b/g, '')
     .replace(/[^A-Z0-9 ]/g, '')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
 function findMatchingAmatorTeam(askfName: string, localTeams: Team[]): Team | undefined {
-  const normASKF = normalizeName(askfName);
+  // 1. Önce alias haritasına bak (en güvenilir)
+  const lookupKey = normalizeForLookup(askfName);
+  const aliasTarget = ASKF_NAME_ALIASES[lookupKey];
+  if (aliasTarget) {
+    const found = localTeams.find(t => t.name === aliasTarget);
+    if (found) return found;
+  }
 
-  // Exact match
+  // 2. Alias'ta bulunamadıysa kısmi alias eşleştirmesi dene
+  for (const [aliasKey, aliasVal] of Object.entries(ASKF_NAME_ALIASES)) {
+    if (lookupKey.includes(aliasKey) || aliasKey.includes(lookupKey)) {
+      const found = localTeams.find(t => t.name === aliasVal);
+      if (found) return found;
+    }
+  }
+
+  // 3. Normalize edilmiş exact match
+  const normASKF = normalizeName(askfName);
   const exact = localTeams.find(t => normalizeName(t.name) === normASKF);
   if (exact) return exact;
 
-  // Contains match
+  // 4. Contains match
   const contains = localTeams.find(t => {
     const ln = normalizeName(t.name);
     return normASKF.includes(ln) || ln.includes(normASKF);
   });
   if (contains) return contains;
 
-  // Word overlap match (less strict for amatör teams with short names)
+  // 5. Kelime örtüşme — sadece 2+ kelime eşleşirse kabul et (1 kelime çok belirsiz)
   const scored = localTeams.map(t => {
     const ln = normalizeName(t.name);
     const wA = normASKF.split(' ').filter(w => w.length >= 3);
     const setB = new Set(ln.split(' ').filter(w => w.length >= 3));
     const overlap = wA.filter(w => setB.has(w)).length;
     return { team: t, overlap };
-  }).filter(x => x.overlap >= 1);
+  }).filter(x => x.overlap >= 2);
 
   if (scored.length === 1) return scored[0].team;
   if (scored.length > 1) return scored.sort((a, b) => b.overlap - a.overlap)[0].team;
 
+  console.warn(`[ASKF] Eşleştirilemeyen takım: "${askfName}" (normalized: "${normASKF}")`);
   return undefined;
 }
 

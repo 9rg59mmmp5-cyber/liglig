@@ -289,116 +289,164 @@ function parseFixtures(html: string) {
   return fixtures;
 }
 
+// ─── ASKF Parser (karabukaskf.com — list-based HTML, NOT table-based) ─────────
 function parseAmatorPage(html: string) {
   const result: any = { amator_a: { standings: [], fixtures: [] }, amator_b: { standings: [], fixtures: [] } };
 
-  const groupAMatch = html.match(/A\s*GRUBU([\s\S]*?)(?=B\s*GRUBU|$)/i);
-  const groupBMatch = html.match(/B\s*GRUBU([\s\S]*?)(?=C\s*GRUBU|$)/i);
+  // ASKF site uses "Lig A Grubu" / "Lig B Grubu" as group delimiters (inside <h3><a> headings)
+  const groupAIdx = html.search(/Lig\s+A\s+Grubu/i);
+  const groupBIdx = html.search(/Lig\s+B\s+Grubu/i);
 
-  if (groupAMatch) result.amator_a = parseAmatorGroup(groupAMatch[1]);
-  if (groupBMatch) result.amator_b = parseAmatorGroup(groupBMatch[1]);
+  if (groupAIdx >= 0 && groupBIdx >= 0) {
+    const groupAHtml = html.substring(groupAIdx, groupBIdx);
+    const groupBHtml = html.substring(groupBIdx);
+    result.amator_a = parseAmatorGroup(groupAHtml);
+    result.amator_b = parseAmatorGroup(groupBHtml);
+  } else if (groupAIdx >= 0) {
+    result.amator_a = parseAmatorGroup(html.substring(groupAIdx));
+  }
 
-  // Fallback: find all standings tables
+  // Fallback: if group split didn't work, try generic "A GRUBU" / "B GRUBU"
   if (result.amator_a.standings.length === 0 && result.amator_b.standings.length === 0) {
-    const tables = [...html.matchAll(/<table[\s\S]*?<\/table>/gi)].map(m => m[0]);
-    const standingsTables = tables.filter(t => {
-      const nums = (t.match(/<td[^>]*>\s*\d+\s*<\/td>/gi) || []).length;
-      return nums >= 20;
-    });
-
-    if (standingsTables.length >= 2) {
-      result.amator_a.standings = parseAmatorStandings(standingsTables[0]);
-      result.amator_b.standings = parseAmatorStandings(standingsTables[1]);
-    } else if (standingsTables.length === 1) {
-      result.amator_a.standings = parseAmatorStandings(standingsTables[0]);
+    const altAIdx = html.search(/A\s*GRUBU/i);
+    const altBIdx = html.search(/B\s*GRUBU/i);
+    if (altAIdx >= 0 && altBIdx >= 0) {
+      result.amator_a = parseAmatorGroup(html.substring(altAIdx, altBIdx));
+      result.amator_b = parseAmatorGroup(html.substring(altBIdx));
     }
   }
+
+  console.log(`[ASKF] Parsed A: ${result.amator_a.standings.length} standings, ${result.amator_a.fixtures.length} fixtures`);
+  console.log(`[ASKF] Parsed B: ${result.amator_b.standings.length} standings, ${result.amator_b.fixtures.length} fixtures`);
 
   return result;
 }
 
-function parseAmatorGroup(sectionHtml: string) {
-  const standings: any[] = [];
-  const fixtures: any[] = [];
-
-  const tables = [...sectionHtml.matchAll(/<table[\s\S]*?<\/table>/gi)].map(m => m[0]);
-  for (const table of tables) {
-    const parsed = parseAmatorStandings(table);
-    if (parsed.length > 0) { standings.push(...parsed); break; }
-  }
-
-  fixtures.push(...parseAmatorFixtures(sectionHtml));
-  return { standings, fixtures };
+function parseAmatorGroup(html: string) {
+  return {
+    standings: parseAmatorStandings(html),
+    fixtures: parseAmatorFixtures(html),
+  };
 }
 
-function parseAmatorStandings(tableHtml: string) {
+function parseAmatorStandings(html: string) {
   const results: any[] = [];
-  const rows = [...tableHtml.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)];
-  let rank = 1;
 
-  for (const row of rows) {
-    const cells = [...row[1].matchAll(/<t[dh][^>]*>([\s\S]*?)<\/t[dh]>/gi)].map(
-      c => c[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
-    );
+  // Find the LAST "Puan Durumu" section (fixture weeks also contain "Puan Durumu" text — we want the summary)
+  const pdIdx = html.lastIndexOf('Puan Durumu');
+  if (pdIdx === -1) return results;
+  const section = html.substring(pdIdx);
 
-    const nums: number[] = [];
-    let teamName = '';
+  // Find each team via /takim/ID/slug links in the standings section
+  const teamRegex = /href="\/takim\/\d+\/[^"]*"[^>]*>([\s\S]*?)<\/a>/gi;
+  let m;
+  const teamEntries: { name: string; endIdx: number }[] = [];
 
-    for (const cell of cells) {
-      const cleaned = cell.replace(/\*/g, '').trim();
-      if (/^-?\d+$/.test(cleaned)) {
-        nums.push(parseInt(cleaned, 10));
-      } else if (cleaned.length >= 3 && !/^\d+$/.test(cleaned)) {
-        if (!teamName) teamName = cleaned.replace(/^\d+\.\s*/, '').trim();
-      }
+  while ((m = teamRegex.exec(section)) !== null) {
+    const name = m[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
+    if (name.length >= 2) {
+      teamEntries.push({ name, endIdx: m.index + m[0].length });
     }
+  }
 
-    if (teamName && nums.length >= 8) {
+  for (let i = 0; i < teamEntries.length; i++) {
+    const entry = teamEntries[i];
+    // Text between this team end and the next team start (or end of section for last)
+    const nextStart = i + 1 < teamEntries.length
+      ? teamEntries[i + 1].endIdx - 200
+      : section.length;
+    const afterText = section
+      .substring(entry.endIdx, Math.min(entry.endIdx + 300, nextStart + 200))
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ');
+
+    const nums = [...afterText.matchAll(/-?\d+/g)].map(n => parseInt(n[0], 10));
+
+    // Need 8 stats: O G B M A(gf) Y(ga) P Av(gd)
+    if (nums.length >= 8) {
       results.push({
-        rank: rank++,
-        name: teamName,
+        rank: results.length + 1,
+        name: entry.name,
         played: nums[0], won: nums[1], drawn: nums[2], lost: nums[3],
-        gf: nums[4], ga: nums[5], gd: nums[6], pts: nums[7],
+        gf: nums[4], ga: nums[5], pts: nums[6], gd: nums[7],
       });
     }
   }
+
   return results;
 }
 
-function parseAmatorFixtures(sectionHtml: string) {
+function parseAmatorFixtures(html: string) {
   const fixtures: any[] = [];
-  const weekRegex = /(\d{1,2})\.\s*(?:Hafta|HAFTA)([\s\S]*?)(?=\d{1,2}\.\s*(?:Hafta|HAFTA)|$)/gi;
+
+  // Find all "X. Hafta" positions
+  const weekPattern = /(\d{1,2})\.\s*(?:Hafta|HAFTA)/gi;
+  const weekPositions: { week: number; index: number }[] = [];
   let wm;
+  while ((wm = weekPattern.exec(html)) !== null) {
+    weekPositions.push({ week: parseInt(wm[1], 10), index: wm.index });
+  }
 
-  while ((wm = weekRegex.exec(sectionHtml)) !== null) {
-    const week = parseInt(wm[1], 10);
+  for (let w = 0; w < weekPositions.length; w++) {
+    const week = weekPositions[w].week;
     if (week < 1 || week > 50) continue;
-    const weekHtml = wm[2];
 
-    for (const trm of weekHtml.matchAll(/<tr[^>]*>([\s\S]*?)<\/tr>/gi)) {
-      const cells = [...trm[1].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/gi)].map(
-        c => c[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim()
-      );
+    const start = weekPositions[w].index;
+    // End at "Lig Bilgisi" or next week or +5000 chars
+    const nextWeekIdx = w + 1 < weekPositions.length ? weekPositions[w + 1].index : start + 5000;
+    const ligBilgisiIdx = html.indexOf('Lig Bilgisi', start + 10);
+    const sectionEnd = (ligBilgisiIdx > start && ligBilgisiIdx < nextWeekIdx)
+      ? ligBilgisiIdx : nextWeekIdx;
+    const weekHtml = html.substring(start, sectionEnd);
 
-      if (cells.length >= 3) {
-        for (let i = 0; i < cells.length - 2; i++) {
-          const team1 = cells[i];
-          const scoreTxt = cells[i + 1].replace(/\s+/g, '');
-          const team2 = cells[i + 2];
+    // Find team links (pairs): /takim/ID/slug
+    const links: { name: string; index: number; endIndex: number }[] = [];
+    const localTeamRegex = /href="\/takim\/\d+\/[^"]*"[^>]*>([\s\S]*?)<\/a>/gi;
+    let lm;
+    while ((lm = localTeamRegex.exec(weekHtml)) !== null) {
+      const name = lm[1].replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' ').trim();
+      if (name.length >= 2) {
+        links.push({ name, index: lm.index, endIndex: lm.index + lm[0].length });
+      }
+    }
 
-          if (team1.length >= 3 && team2.length >= 3 && /^\d+-\d+$/.test(scoreTxt)) {
-            const [hs, as] = scoreTxt.split('-').map(Number);
-            fixtures.push({ week, homeTeamName: team1, awayTeamName: team2, homeScore: hs, awayScore: as, isPlayed: true });
-            break;
-          }
-          if (team1.length >= 3 && team2.length >= 3 && /^[-–]$/.test(scoreTxt)) {
-            fixtures.push({ week, homeTeamName: team1, awayTeamName: team2, homeScore: null, awayScore: null, isPlayed: false });
-            break;
-          }
-        }
+    // Every 2 consecutive links = 1 match (home vs away)
+    for (let j = 0; j < links.length - 1; j += 2) {
+      const home = links[j];
+      const away = links[j + 1];
+      if (!home || !away) continue;
+
+      // Text between home and away links for score
+      const between = weekHtml
+        .substring(home.endIndex, away.index)
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .trim();
+
+      const scoreMatch = between.match(/(\d+)\s*[-–]\s*(\d+)/);
+
+      if (scoreMatch) {
+        fixtures.push({
+          week,
+          homeTeamName: home.name,
+          awayTeamName: away.name,
+          homeScore: parseInt(scoreMatch[1], 10),
+          awayScore: parseInt(scoreMatch[2], 10),
+          isPlayed: true,
+        });
+      } else {
+        fixtures.push({
+          week,
+          homeTeamName: home.name,
+          awayTeamName: away.name,
+          homeScore: null,
+          awayScore: null,
+          isPlayed: false,
+        });
       }
     }
   }
+
   return fixtures;
 }
 

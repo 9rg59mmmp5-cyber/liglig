@@ -11,6 +11,27 @@ import LeagueStandingsExport from './components/LeagueStandingsExport';
 import { fetchTFFData, mapTFFStandingsToTeams, mapTFFFixturesToMatches, hasTFFSync } from './services/tffService';
 import { fetchAmatorData, mapAmatorStandingsToTeams, mapAmatorFixturesToMatches, hasAmatorSync } from './services/amatorService';
 
+// Versiyon bazlı localStorage temizleyici — yeni deploy'da eski bozuk veri kalmasın
+const APP_CACHE_VERSION = 'v3_20260228';
+(function clearStaleCache() {
+  try {
+    const saved = localStorage.getItem('liglig_cache_version');
+    if (saved !== APP_CACHE_VERSION) {
+      // Tüm liglig verilerini temizle
+      const keysToRemove: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && (key.startsWith('fixtures_') || key.startsWith('tff_') || key.startsWith('fixtures_fingerprint_'))) {
+          keysToRemove.push(key);
+        }
+      }
+      keysToRemove.forEach(k => localStorage.removeItem(k));
+      localStorage.setItem('liglig_cache_version', APP_CACHE_VERSION);
+      console.log(`[LigLig] Cache temizlendi (${saved} → ${APP_CACHE_VERSION}), ${keysToRemove.length} key silindi`);
+    }
+  } catch (_) { /* sessizce geç */ }
+})();
+
 const App: React.FC = () => {
   // State for active league
   const [activeLeagueId, setActiveLeagueId] = useState<string>('karabuk');
@@ -18,11 +39,25 @@ const App: React.FC = () => {
   const [showCombinedExport, setShowCombinedExport] = useState(false);
   const [showLeagueExport, setShowLeagueExport] = useState<'karabuk' | 'eflani' | null>(null);
 
-  // TFF Sync state
-  const [tffStandings, setTffStandings] = useState<Team[] | null>(null);
+  // TFF Sync state — localStorage'dan geri yükle
+  const [tffStandings, setTffStandings] = useState<Team[] | null>(() => {
+    try {
+      const saved = localStorage.getItem(`tff_standings_${activeLeagueId}`);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (_) { /* sessizce geç */ }
+    return null;
+  });
   const [manualWeek, setManualWeek] = useState<number | null>(null);
   const [isTFFSyncing, setIsTFFSyncing] = useState(false);
-  const [tffLastSync, setTffLastSync] = useState<string | null>(null);
+  const [tffLastSync, setTffLastSync] = useState<string | null>(() => {
+    try {
+      const savedTime = localStorage.getItem(`tff_sync_time_${activeLeagueId}`);
+      return savedTime || null;
+    } catch (_) { return null; }
+  });
   const [tffSyncError, setTffSyncError] = useState<string | null>(null);
   
   // Get current league config
@@ -40,6 +75,25 @@ const App: React.FC = () => {
   // Auto-save refs
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialLoadDoneRef = useRef(false);
+  const standingsLeagueRef = useRef<string>(activeLeagueId); // hangi lig'e ait standings
+
+  // tffStandings değişince localStorage'a kaydet (sadece DOĞRU lig için)
+  useEffect(() => {
+    if (tffStandings && tffStandings.length > 0 && standingsLeagueRef.current === activeLeagueId) {
+      try {
+        localStorage.setItem(`tff_standings_${activeLeagueId}`, JSON.stringify(tffStandings));
+      } catch (_) { /* sessizce geç */ }
+    }
+  }, [tffStandings, activeLeagueId]);
+
+  // tffLastSync değişince localStorage'a kaydet (sadece DOĞRU lig için)
+  useEffect(() => {
+    if (tffLastSync && standingsLeagueRef.current === activeLeagueId) {
+      try {
+        localStorage.setItem(`tff_sync_time_${activeLeagueId}`, tffLastSync);
+      } catch (_) { /* sessizce geç */ }
+    }
+  }, [tffLastSync, activeLeagueId]);
 
   // Load fixtures from local storage or constants when league changes
   // Constants değiştiğinde localStorage'ı sıfırla — versiyon kontrolü ile
@@ -60,8 +114,11 @@ const App: React.FC = () => {
       console.log(`[App] Constants güncellenmiş (${savedFingerprint} → ${constantsFingerprint}), localStorage sıfırlanıyor.`);
       localStorage.removeItem(`fixtures_${activeLeagueId}`);
       localStorage.removeItem(`tff_last_auto_${activeLeagueId}`);
+      localStorage.removeItem(`tff_standings_${activeLeagueId}`);
+      localStorage.removeItem(`tff_sync_time_${activeLeagueId}`);
       localStorage.setItem(fingerprintKey, constantsFingerprint);
       setFixtures([...league.fixtures]);
+      setTffStandings(null);
       return;
     }
 
@@ -97,7 +154,6 @@ const App: React.FC = () => {
 
   // ─── Skor değiştiğinde otomatik kaydet (800ms debounce) ─────────────────────
   useEffect(() => {
-    // İlk yüklemede kaydetme (localStorage'dan okunan veriyi tekrar yazmaya gerek yok)
     if (!initialLoadDoneRef.current) {
       initialLoadDoneRef.current = true;
       return;
@@ -176,13 +232,33 @@ const App: React.FC = () => {
     }
   }, [activeLeagueId, isTFFSyncing, currentLeague.teams, currentLeague.fixtures]);
 
-  // Lig değişince TFF state'i sıfırla
+  // Lig değişince TFF state'i HEMEN sıfırla, sonra localStorage'dan geri yükle
   useEffect(() => {
+    // Ref'i hemen güncelle — save useEffect eski lig verisini yeni key'e yazmasın
+    standingsLeagueRef.current = activeLeagueId;
+
+    // Önce sıfırla (eski lig verisi ekranda kalmasın)
     setTffStandings(null);
-    setManualWeek(null);
     setTffLastSync(null);
+    setManualWeek(null);
     setTffSyncError(null);
     initialLoadDoneRef.current = false;
+
+    // Sonra localStorage'dan bu lig için kayıtlı veri varsa geri yükle
+    try {
+      const savedStandings = localStorage.getItem(`tff_standings_${activeLeagueId}`);
+      if (savedStandings) {
+        const parsed = JSON.parse(savedStandings);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setTffStandings(parsed);
+        }
+      }
+    } catch (_) { /* sessizce geç */ }
+
+    try {
+      const savedTime = localStorage.getItem(`tff_sync_time_${activeLeagueId}`);
+      if (savedTime) setTffLastSync(savedTime);
+    } catch (_) { /* sessizce geç */ }
   }, [activeLeagueId]);
 
   // TFF/ASKF destekli ligde otomatik çek (lig açılınca)
@@ -250,12 +326,24 @@ const App: React.FC = () => {
   }, [activeLeagueId, handleTFFSync]);
 
   // Recalculate standings
-  // TFF sync olan liglerde (karabük, eflani): TFF verisi gelince onu kullan
-  // TFF yok / sync başarısız: fixtures üzerinden sıfırdan hesapla
+  // TFF/ASKF sync olan liglerde: sync verisi gelince onu kullan
+  // Sync yok / başarısız: fixtures üzerinden sıfırdan hesapla
+  // AMATOR liglerde: constants.ts base veriler zaten hafta X verilerini içeriyor,
+  //   bu yüzden calculateLiveStandings sıfır base ile çalışmalı (çift sayım önleme)
   const liveTeams = useMemo(() => {
     if (tffStandings && tffStandings.length > 0) return tffStandings;
+
+    // Amator liglerde fixtures TÜM maçları içerir (hafta 1-14),
+    // constants.ts'deki base veriler üst üste binmesin diye sıfırdan hesapla
+    if (hasAmatorSync(activeLeagueId)) {
+      const zeroBaseTeams = currentLeague.teams.map(t => ({
+        ...t, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, gd: 0, pts: 0, form: []
+      }));
+      return calculateLiveStandings(zeroBaseTeams, fixtures);
+    }
+
     return calculateLiveStandings(currentLeague.teams, fixtures);
-  }, [fixtures, currentLeague.teams, tffStandings]);
+  }, [fixtures, currentLeague.teams, tffStandings, activeLeagueId]);
 
   // Calculate dynamic week based on average matches played
   const dynamicWeek = useMemo(() => {
@@ -270,9 +358,12 @@ const App: React.FC = () => {
   }, [liveTeams, currentLeague.currentWeek, manualWeek]);
 
   const handleUpdateScore = (matchId: string, homeScoreStr: string, awayScoreStr: string) => {
-    // Manuel skor girişinde TFF standings'i temizle, 
+    // Manuel skor girişinde TFF/ASKF standings'i temizle, 
     // böylece calculateLiveStandings fixtures üzerinden yeniden hesaplar
-    if (tffStandings) setTffStandings(null);
+    if (tffStandings) {
+      setTffStandings(null);
+      localStorage.removeItem(`tff_standings_${activeLeagueId}`);
+    }
     
     setFixtures(prev => prev.map(match => {
       if (match.id === matchId) {

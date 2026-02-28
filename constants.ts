@@ -211,20 +211,20 @@ const EFLANI_FIXTURES = [
 
 // --- KARABÜK 1. AMATÖR A GRUBU DATA ---
 const AMATOR_A_TEAMS = [
-  { id: 1, name: "Eskipazar Belediyespor", played: 6, won: 5, drawn: 1, lost: 0, gf: 51, ga: 7, gd: 44, pts: 16, form: [] },
-  { id: 2, name: "Safranbolu Bağlarspor", played: 6, won: 5, drawn: 1, lost: 0, gf: 43, ga: 4, gd: 39, pts: 16, form: [] },
-  { id: 3, name: "Yeşil Yenicespor", played: 6, won: 3, drawn: 1, lost: 2, gf: 16, ga: 23, gd: -7, pts: 10, form: [] },
+  { id: 1, name: "Eskipazar Belediyespor", played: 7, won: 6, drawn: 1, lost: 0, gf: 63, ga: 7, gd: 56, pts: 19, form: [] },
+  { id: 2, name: "Safranbolu Bağlarspor", played: 7, won: 6, drawn: 1, lost: 0, gf: 52, ga: 4, gd: 48, pts: 19, form: [] },
+  { id: 3, name: "Yeşil Yenicespor", played: 7, won: 4, drawn: 1, lost: 2, gf: 19, ga: 24, gd: -5, pts: 13, form: [] },
   { id: 4, name: "Anadolu Gençlikspor", played: 6, won: 3, drawn: 0, lost: 3, gf: 15, ga: 19, gd: -4, pts: 9, form: [] },
-  { id: 5, name: "Esentepe 3 Nisan Spor", played: 6, won: 1, drawn: 2, lost: 3, gf: 12, ga: 21, gd: -9, pts: 5, form: [] },
-  { id: 6, name: "Beşbinevler Gücüspor", played: 6, won: 1, drawn: 0, lost: 5, gf: 4, ga: 22, gd: -18, pts: 3, form: [] },
-  { id: 7, name: "Bozkurt 78 Spor", played: 6, won: 0, drawn: 1, lost: 5, gf: 7, ga: 52, gd: -45, pts: 1, form: [] },
+  { id: 5, name: "Esentepe 3 Nisan Spor", played: 7, won: 1, drawn: 2, lost: 4, gf: 12, ga: 33, gd: -21, pts: 5, form: [] },
+  { id: 6, name: "Beşbinevler Gücüspor", played: 7, won: 1, drawn: 0, lost: 6, gf: 4, ga: 31, gd: -27, pts: 3, form: [] },
+  { id: 7, name: "Bozkurt 78 Spor", played: 7, won: 0, drawn: 1, lost: 6, gf: 8, ga: 55, gd: -47, pts: 1, form: [] },
 ];
 
 const AMATOR_A_FIXTURES = [
-  // Week 8
-  { id: 'a8_1', week: 8, homeTeamId: 7, awayTeamId: 3, homeScore: null, awayScore: null, isPlayed: false }, // Bozkurt 78 vs Yeşil Yenice
-  { id: 'a8_2', week: 8, homeTeamId: 6, awayTeamId: 2, homeScore: null, awayScore: null, isPlayed: false }, // Beşbinevler vs Saf. Bağlar
-  { id: 'a8_3', week: 8, homeTeamId: 5, awayTeamId: 1, homeScore: null, awayScore: null, isPlayed: false }, // 3 Nisan vs Eskipazar
+  // Week 8 (PLAYED)
+  { id: 'a8_1', week: 8, homeTeamId: 7, awayTeamId: 3, homeScore: 1, awayScore: 3, isPlayed: true }, // Bozkurt 78 1-3 Yeşil Yenice
+  { id: 'a8_2', week: 8, homeTeamId: 6, awayTeamId: 2, homeScore: 0, awayScore: 9, isPlayed: true }, // Beşbinevler 0-9 Saf. Bağlar
+  { id: 'a8_3', week: 8, homeTeamId: 5, awayTeamId: 1, homeScore: 0, awayScore: 12, isPlayed: true }, // 3 Nisan 0-12 Eskipazar
   
   // Week 9
   { id: 'a9_1', week: 9, homeTeamId: 2, awayTeamId: 4, homeScore: null, awayScore: null, isPlayed: false }, // Saf. Bağlar vs Anadolu Gençlik
@@ -259,20 +259,20 @@ const AMATOR_A_FIXTURES = [
 
 // --- KARABÜK 1. AMATÖR B GRUBU DATA ---
 const AMATOR_B_TEAMS = [
-  { id: 1, name: "Yortanspor", played: 6, won: 5, drawn: 1, lost: 0, gf: 39, ga: 2, gd: 37, pts: 16, form: [] },
-  { id: 2, name: "Safranboluspor", played: 6, won: 5, drawn: 1, lost: 0, gf: 33, ga: 2, gd: 31, pts: 16, form: [] },
-  { id: 3, name: "Rüzgarlı FK", played: 6, won: 4, drawn: 0, lost: 2, gf: 17, ga: 16, gd: 1, pts: 12, form: [] },
+  { id: 1, name: "Yortanspor", played: 7, won: 5, drawn: 1, lost: 1, gf: 39, ga: 3, gd: 36, pts: 16, form: [] },
+  { id: 2, name: "Safranboluspor", played: 7, won: 6, drawn: 1, lost: 0, gf: 34, ga: 2, gd: 32, pts: 19, form: [] },
+  { id: 3, name: "Rüzgarlı FK", played: 7, won: 5, drawn: 0, lost: 2, gf: 21, ga: 16, gd: 5, pts: 15, form: [] },
   { id: 4, name: "5000 Evlerspor", played: 6, won: 3, drawn: 0, lost: 3, gf: 15, ga: 12, gd: 3, pts: 9, form: [] },
-  { id: 5, name: "Burunsuz Karabükgücü", played: 6, won: 2, drawn: 0, lost: 4, gf: 17, ga: 24, gd: -7, pts: 6, form: [] },
-  { id: 6, name: "Karabük Gençlerbirliği", played: 6, won: 1, drawn: 0, lost: 5, gf: 7, ga: 33, gd: -26, pts: 3, form: [] },
-  { id: 7, name: "Karabük Birlikspor", played: 6, won: 0, drawn: 0, lost: 6, gf: 8, ga: 47, gd: -39, pts: 0, form: [] },
+  { id: 5, name: "Burunsuz Karabükgücü", played: 7, won: 3, drawn: 0, lost: 4, gf: 20, ga: 24, gd: -4, pts: 9, form: [] },
+  { id: 6, name: "Karabük Gençlerbirliği", played: 7, won: 1, drawn: 0, lost: 6, gf: 7, ga: 37, gd: -30, pts: 3, form: [] },
+  { id: 7, name: "Karabük Birlikspor", played: 7, won: 0, drawn: 0, lost: 7, gf: 8, ga: 50, gd: -42, pts: 0, form: [] },
 ];
 
 const AMATOR_B_FIXTURES = [
-  // Week 8
-  { id: 'b8_1', week: 8, homeTeamId: 6, awayTeamId: 3, homeScore: null, awayScore: null, isPlayed: false }, // K. Gençlerbirliği vs Rüzgarlı
-  { id: 'b8_2', week: 8, homeTeamId: 2, awayTeamId: 1, homeScore: null, awayScore: null, isPlayed: false }, // Safranbolu vs Yortan
-  { id: 'b8_3', week: 8, homeTeamId: 5, awayTeamId: 7, homeScore: null, awayScore: null, isPlayed: false }, // Burunsuz vs K. Birlik
+  // Week 8 (PLAYED)
+  { id: 'b8_1', week: 8, homeTeamId: 6, awayTeamId: 3, homeScore: 0, awayScore: 4, isPlayed: true }, // K. Gençlerbirliği 0-4 Rüzgarlı
+  { id: 'b8_2', week: 8, homeTeamId: 2, awayTeamId: 1, homeScore: 1, awayScore: 0, isPlayed: true }, // Safranbolu 1-0 Yortan
+  { id: 'b8_3', week: 8, homeTeamId: 5, awayTeamId: 7, homeScore: 3, awayScore: 0, isPlayed: true }, // Burunsuz 3-0 K. Birlik
 
   // Week 9
   { id: 'b9_1', week: 9, homeTeamId: 1, awayTeamId: 4, homeScore: null, awayScore: null, isPlayed: false }, // Yortan vs 5000 Evler
@@ -354,7 +354,7 @@ export const LEAGUES: Record<string, LeagueData> = {
     name: '1. Amatör A Grubu',
     leagueName: 'KARABÜK 1. AMATÖR A GRUBU',
     shortName: 'Amator A',
-    currentWeek: 7,
+    currentWeek: 8,
     targetTeamName: '', 
     instagram: '@sporkarabuk',
     teams: AMATOR_A_TEAMS,
@@ -375,7 +375,7 @@ export const LEAGUES: Record<string, LeagueData> = {
     name: '1. Amatör B Grubu',
     leagueName: 'KARABÜK 1. AMATÖR B GRUBU',
     shortName: 'Amator B',
-    currentWeek: 7,
+    currentWeek: 8,
     targetTeamName: '', 
     instagram: '@sporkarabuk',
     teams: AMATOR_B_TEAMS,
