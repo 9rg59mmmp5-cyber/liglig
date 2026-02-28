@@ -5,7 +5,7 @@ import { calculateLiveStandings } from './utils';
 import { Match, Team } from './types';
 import StandingsTable from './components/StandingsTable';
 import FixtureList from './components/FixtureList';
-import { BarChart3, ArrowDown, Image, Calendar, Trophy, ChevronDown, CheckCircle2, X, Share, Settings, RefreshCw } from 'lucide-react';
+import { BarChart3, ArrowDown, Image, Calendar, Trophy, ChevronDown, CheckCircle2, X, Share, RefreshCw } from 'lucide-react';
 import CombinedStandingsExport from './components/CombinedStandingsExport';
 import LeagueStandingsExport from './components/LeagueStandingsExport';
 import { fetchTFFData, mapTFFStandingsToTeams, mapTFFFixturesToMatches, hasTFFSync } from './services/tffService';
@@ -17,7 +17,6 @@ const App: React.FC = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showCombinedExport, setShowCombinedExport] = useState(false);
   const [showLeagueExport, setShowLeagueExport] = useState<'karabuk' | 'eflani' | null>(null);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   // TFF Sync state
   const [tffStandings, setTffStandings] = useState<Team[] | null>(null);
@@ -224,7 +223,7 @@ const App: React.FC = () => {
       
       // If no matches played (avg 0), fallback to configured current week, otherwise use average
       return avg === 0 ? currentLeague.currentWeek : avg;
-  }, [liveTeams, currentLeague.currentWeek]);
+  }, [liveTeams, currentLeague.currentWeek, manualWeek]);
 
   const handleUpdateScore = (matchId: string, homeScoreStr: string, awayScoreStr: string) => {
     setFixtures(prev => prev.map(match => {
@@ -358,29 +357,6 @@ const App: React.FC = () => {
                 )}
             </div>
 
-            {/* Settings Button */}
-            <div className="relative z-50 ml-auto">
-                <button 
-                    onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                    className="bg-black/20 hover:bg-black/30 border border-white/20 p-2.5 rounded-xl text-white transition-all active:scale-95"
-                >
-                    <Settings className="w-6 h-6" />
-                </button>
-                
-                {isSettingsOpen && (
-                    <>
-                        <div className="fixed inset-0 z-40" onClick={() => setIsSettingsOpen(false)}></div>
-                        <div className="absolute top-full right-0 mt-3 w-64 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 ring-1 ring-black/5">
-                            <div className="px-4 py-3 bg-slate-50 border-b border-slate-100">
-                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ayarlar</span>
-                            </div>
-                            <div className="px-4 py-4 text-sm text-slate-500">
-                              Puan durumu görselleri ve güncelleme butonları her ligin kendi sayfasındadır.
-                            </div>
-                        </div>
-                    </>
-                )}
-            </div>
         </div>
       </header>
 

@@ -262,7 +262,15 @@ const CombinedStandingsExport: React.FC<CombinedStandingsExportProps> = ({ onClo
 
   const dataA       = useMemo(() => getLeagueData('amator_a'), []);
   const dataB       = useMemo(() => getLeagueData('amator_b'), []);
-  const autoWeek    = Math.max(dataA.currentWeek, dataB.currentWeek);
+  
+  const autoWeek    = useMemo(() => {
+    const calcWeek = (data: { standings: Team[]; currentWeek: number }) => {
+      if (data.standings.length === 0) return data.currentWeek;
+      const avg = Math.round(data.standings.reduce((s, t) => s + t.played, 0) / data.standings.length);
+      return avg === 0 ? data.currentWeek : avg;
+    };
+    return Math.max(calcWeek(dataA), calcWeek(dataB));
+  }, [dataA, dataB]);
 
   // ── Hafta seçimi state ────────────────────────────────────────────────────
   const [selectedWeek, setSelectedWeek] = useState(autoWeek);

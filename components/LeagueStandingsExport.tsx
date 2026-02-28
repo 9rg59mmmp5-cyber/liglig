@@ -299,6 +299,11 @@ const LeagueStandingsExport: React.FC<LeagueStandingsExportProps> = ({ leagueId,
 
   const [selectedWeek, setSelectedWeek] = useState(autoWeek);
 
+  // autoWeek değiştiğinde (örn. TFF sync sonrası) selectedWeek'i güncelle
+  useEffect(() => {
+    setSelectedWeek(autoWeek);
+  }, [autoWeek]);
+
   useEffect(() => {
     const update = () => {
       if (previewWrapperRef.current)
