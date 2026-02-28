@@ -21,6 +21,7 @@ const App: React.FC = () => {
 
   // TFF Sync state
   const [tffStandings, setTffStandings] = useState<Team[] | null>(null);
+  const [manualWeek, setManualWeek] = useState<number | null>(null);
   const [isTFFSyncing, setIsTFFSyncing] = useState(false);
   const [tffLastSync, setTffLastSync] = useState<string | null>(null);
   const [tffSyncError, setTffSyncError] = useState<string | null>(null);
@@ -106,9 +107,7 @@ const App: React.FC = () => {
         }
 
         const mappedStandings = mapTFFStandingsToTeams(data.standings, currentLeague.teams, activeLeagueId);
-        if (mappedStandings.length > 0) {
-          setTffStandings(mappedStandings);
-        }
+        setTffStandings(mappedStandings);
 
         const baseFixtures: Match[] = [...currentLeague.fixtures];
         const updatedFixtures = mapTFFFixturesToMatches(data.fixtures, currentLeague.teams, baseFixtures, activeLeagueId);
@@ -152,6 +151,7 @@ const App: React.FC = () => {
   // Lig değişince TFF state'i sıfırla
   useEffect(() => {
     setTffStandings(null);
+    setManualWeek(null);
     setTffLastSync(null);
     setTffSyncError(null);
   }, [activeLeagueId]);
@@ -216,6 +216,7 @@ const App: React.FC = () => {
 
   // Calculate dynamic week based on average matches played
   const dynamicWeek = useMemo(() => {
+      if (manualWeek !== null) return manualWeek;
       if (liveTeams.length === 0) return currentLeague.currentWeek;
       
       const totalPlayed = liveTeams.reduce((acc, team) => acc + team.played, 0);
@@ -371,47 +372,11 @@ const App: React.FC = () => {
                         <div className="fixed inset-0 z-40" onClick={() => setIsSettingsOpen(false)}></div>
                         <div className="absolute top-full right-0 mt-3 w-64 bg-white rounded-xl shadow-2xl border border-slate-100 overflow-hidden z-50 animate-in fade-in slide-in-from-top-2 ring-1 ring-black/5">
                             <div className="px-4 py-3 bg-slate-50 border-b border-slate-100">
-                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ayarlar & Araçlar</span>
+                                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Ayarlar</span>
                             </div>
-                            <button
-                                onClick={() => { setShowCombinedExport(true); setIsSettingsOpen(false); }}
-                                className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 border-b border-slate-50 flex items-center gap-3"
-                            >
-                                <Image className="w-4 h-4 text-purple-600" />
-                                1. Amatör (A+B) Ortak Puan
-                            </button>
-                            <button
-                                onClick={() => { setShowLeagueExport('karabuk'); setIsSettingsOpen(false); }}
-                                className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 border-b border-slate-50 flex items-center gap-3"
-                            >
-                                <Image className="w-4 h-4 text-red-600" />
-                                Karabük İdman Yurdu Puan Durumu
-                            </button>
-                            <button
-                                onClick={() => { setShowLeagueExport('eflani'); setIsSettingsOpen(false); }}
-                                className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 border-b border-slate-50 flex items-center gap-3"
-                            >
-                                <Image className="w-4 h-4 text-green-600" />
-                                Tavuk Evi Eflani Spor Puan Durumu
-                            </button>
-                            {(hasTFFSync(activeLeagueId) || hasAmatorSync(activeLeagueId)) && (
-                              <button
-                                onClick={() => { handleTFFSync(); setIsSettingsOpen(false); }}
-                                disabled={isTFFSyncing}
-                                className="w-full text-left px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 border-b border-slate-50 flex items-center gap-3 disabled:opacity-60"
-                              >
-                                <RefreshCw className={`w-4 h-4 text-green-600 ${isTFFSyncing ? 'animate-spin' : ''}`} />
-                                <div className="flex flex-col">
-                                  <span>{isTFFSyncing ? 'Güncelleniyor…' : hasAmatorSync(activeLeagueId) ? 'ASKF\'den Otomatik Güncelle' : 'TFF\'den Otomatik Güncelle'}</span>
-                                  {tffLastSync && (
-                                    <span className="text-xs text-green-600 font-medium">✓ {hasAmatorSync(activeLeagueId) ? 'ASKF' : 'TFF'} Aktif — Son: {tffLastSync}</span>
-                                  )}
-                                  {tffSyncError && !tffLastSync && (
-                                    <span className="text-xs text-red-500 font-medium">Bağlantı hatası</span>
-                                  )}
-                                </div>
-                              </button>
-                            )}
+                            <div className="px-4 py-4 text-sm text-slate-500">
+                              Puan durumu görselleri ve güncelleme butonları her ligin kendi sayfasındadır.
+                            </div>
                         </div>
                     </>
                 )}
@@ -482,8 +447,38 @@ const App: React.FC = () => {
             {/* Right Column: Standings */}
             <div className={`lg:col-span-7 h-full overflow-y-auto pb-20 lg:pb-0 px-2 lg:px-0 pt-2 lg:pt-8 ${activeTab === 'standings' ? 'block' : 'hidden lg:block'}`}>
                 {/* Action Buttons */}
-                {/* Action bar: TFF / ASKF Güncelle butonu */}
-                <div className="flex items-center justify-end mb-4 gap-2 shrink-0">
+                {/* Action bar: Güncelle + Puan Durumu Görseli butonları */}
+                <div className="flex items-center justify-end mb-4 gap-2 shrink-0 flex-wrap">
+                    {/* Puan Durumu Görsel Export butonu — lige göre */}
+                    {activeLeagueId === 'karabuk' && (
+                      <button
+                        onClick={() => setShowLeagueExport('karabuk')}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all border shadow-sm bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                      >
+                        <Image className="w-4 h-4 text-red-600" />
+                        <span className="font-black text-xs tracking-wide">Puan Durumu Görseli</span>
+                      </button>
+                    )}
+                    {activeLeagueId === 'eflani' && (
+                      <button
+                        onClick={() => setShowLeagueExport('eflani')}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all border shadow-sm bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                      >
+                        <Image className="w-4 h-4 text-green-600" />
+                        <span className="font-black text-xs tracking-wide">Puan Durumu Görseli</span>
+                      </button>
+                    )}
+                    {(activeLeagueId === 'amator_a' || activeLeagueId === 'amator_b') && (
+                      <button
+                        onClick={() => setShowCombinedExport(true)}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all border shadow-sm bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                      >
+                        <Image className="w-4 h-4 text-purple-600" />
+                        <span className="font-black text-xs tracking-wide">A+B Ortak Görsel</span>
+                      </button>
+                    )}
+
+                    {/* TFF / ASKF Güncelle butonu */}
                     {(hasTFFSync(activeLeagueId) || hasAmatorSync(activeLeagueId)) && (
                       <button
                         onClick={handleTFFSync}
@@ -519,6 +514,7 @@ const App: React.FC = () => {
                     teams={liveTeams} 
                     exportFormat={exportFormat} 
                     currentWeek={dynamicWeek}
+                    onWeekChange={setManualWeek}
                     leagueName={currentLeague.leagueName}
                     shortName={currentLeague.shortName}
                     instagram={currentLeague.instagram}

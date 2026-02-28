@@ -6,6 +6,7 @@ interface StandingsTableProps {
   teams: Team[];
   exportFormat?: 'post' | 'story' | null;
   currentWeek?: number;
+  onWeekChange?: (week: number) => void;
   leagueName: string;
   shortName: string;
   instagram: string;
@@ -17,6 +18,7 @@ const StandingsTable: React.FC<StandingsTableProps> = ({
     teams, 
     exportFormat = null, 
     currentWeek, 
+    onWeekChange,
     leagueName,
     shortName,
     instagram,
@@ -56,7 +58,21 @@ const StandingsTable: React.FC<StandingsTableProps> = ({
             {/* Top Info Bar */}
             <div className="flex justify-between items-center px-4 py-2 bg-black/20 text-xs md:text-sm font-medium opacity-90">
                 <span>{leagueName}</span>
-                <span>{currentWeek}. HAFTA</span>
+                <div className="flex items-center gap-1">
+                  {onWeekChange && !isExporting ? (
+                    <select 
+                      value={currentWeek} 
+                      onChange={(e) => onWeekChange(parseInt(e.target.value))}
+                      className="bg-transparent border border-white/30 rounded px-1 focus:outline-none focus:border-white/60 transition-colors"
+                    >
+                      {Array.from({ length: 44 }, (_, i) => i + 1).map(w => (
+                        <option key={w} value={w} className="text-slate-900">{w}. HAFTA</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span>{currentWeek}. HAFTA</span>
+                  )}
+                </div>
             </div>
 
             {/* Main Title Area */}
