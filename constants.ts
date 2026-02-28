@@ -103,7 +103,6 @@ const KARABUK_FIXTURES = [
   { id: 'k30_7', week: 30, homeTeamId: 1, awayTeamId: 4, homeScore: null, awayScore: null, isPlayed: false }, // Sebat vs Yozgat
   { id: 'k30_8', week: 30, homeTeamId: 9, awayTeamId: 7, homeScore: null, awayScore: null, isPlayed: false }, // Tokat vs Düzce
 ];
-];
 
 
 // --- TAVUK EVİ EFLANİ SPOR DATA (BAL 4. GRUP) ---
@@ -208,7 +207,6 @@ const EFLANI_FIXTURES = [
   { id: 'e26_5', week: 26, homeTeamId: 2, awayTeamId: 4, homeScore: null, awayScore: null, isPlayed: false }, // Çankırı Futbol SK - Sorgun Belediyespor
   { id: 'e26_6', week: 26, homeTeamId: 9, awayTeamId: 6, homeScore: null, awayScore: null, isPlayed: false }, // AVS Çaycumaspor - 1930 Bafraspor
   { id: 'e26_7', week: 26, homeTeamId: 14, awayTeamId: 5, homeScore: null, awayScore: null, isPlayed: false }, // Kırşehir Yetişen Yıldızlar - Devrek Belediyespor
-];
 ];
 
 // --- KARABÜK 1. AMATÖR A GRUBU DATA ---
