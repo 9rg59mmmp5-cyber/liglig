@@ -205,6 +205,20 @@ const App: React.FC = () => {
     return () => { cancelled = true; };
   }, [activeLeagueId, currentLeague.teams, currentLeague.fixtures]);
 
+  // Her 5 dakikada bir TFF/ASKF verisini otomatik kontrol et
+  useEffect(() => {
+    const isTFF = hasTFFSync(activeLeagueId);
+    const isAmator = hasAmatorSync(activeLeagueId);
+    if (!isTFF && !isAmator) return;
+
+    const POLL_INTERVAL = 5 * 60 * 1000; // 5 dakika
+    const intervalId = setInterval(() => {
+      handleTFFSync();
+    }, POLL_INTERVAL);
+
+    return () => clearInterval(intervalId);
+  }, [activeLeagueId, handleTFFSync]);
+
   // Recalculate standings
   // TFF sync olan liglerde (karabük, eflani): TFF verisi gelince onu kullan
   // TFF yok / sync başarısız: fixtures üzerinden sıfırdan hesapla
@@ -226,6 +240,10 @@ const App: React.FC = () => {
   }, [liveTeams, currentLeague.currentWeek, manualWeek]);
 
   const handleUpdateScore = (matchId: string, homeScoreStr: string, awayScoreStr: string) => {
+    // Manuel skor girişinde TFF standings'i temizle, 
+    // böylece calculateLiveStandings fixtures üzerinden yeniden hesaplar
+    if (tffStandings) setTffStandings(null);
+    
     setFixtures(prev => prev.map(match => {
       if (match.id === matchId) {
         const homeScore = homeScoreStr === '' ? null : parseInt(homeScoreStr);
@@ -243,6 +261,8 @@ const App: React.FC = () => {
   };
 
   const handleUpdateMatchTeams = (matchId: string, homeTeamId: number, awayTeamId: number) => {
+    if (tffStandings) setTffStandings(null);
+    
     setFixtures(prev => prev.map(match => {
       if (match.id === matchId) {
         return {
