@@ -9,6 +9,7 @@ import { BarChart3, ArrowDown, Image, Calendar, Trophy, ChevronDown, CheckCircle
 import CombinedStandingsExport from './components/CombinedStandingsExport';
 import LeagueStandingsExport from './components/LeagueStandingsExport';
 import { fetchTFFData, mapTFFStandingsToTeams, mapTFFFixturesToMatches, hasTFFSync } from './services/tffService';
+import { fetchAmatorData, mapAmatorStandingsToTeams, mapAmatorFixturesToMatches, hasAmatorSync } from './services/amatorService';
 
 const App: React.FC = () => {
   // State for active league
@@ -90,35 +91,59 @@ const App: React.FC = () => {
     }
   };
 
-  // TFF senkronizasyon handler (manuel tam güncelleme — tüm haftalar)
+  // TFF / ASKF senkronizasyon handler (manuel tam güncelleme)
   const handleTFFSync = useCallback(async () => {
     if (isTFFSyncing) return;
     setIsTFFSyncing(true);
     setTffSyncError(null);
 
     try {
-      const data = await fetchTFFData(activeLeagueId);
-      if (!data || !data.success) {
-        throw new Error(data?.error || 'TFF verisi alınamadı');
+      if (hasTFFSync(activeLeagueId)) {
+        // TFF ligleri (karabuk, eflani)
+        const data = await fetchTFFData(activeLeagueId);
+        if (!data || !data.success) {
+          throw new Error(data?.error || 'TFF verisi alınamadı');
+        }
+
+        const mappedStandings = mapTFFStandingsToTeams(data.standings, currentLeague.teams, activeLeagueId);
+        if (mappedStandings.length > 0) {
+          setTffStandings(mappedStandings);
+        }
+
+        const baseFixtures: Match[] = [...currentLeague.fixtures];
+        const updatedFixtures = mapTFFFixturesToMatches(data.fixtures, currentLeague.teams, baseFixtures, activeLeagueId);
+        setFixtures(updatedFixtures);
+        localStorage.setItem(`fixtures_${activeLeagueId}`, JSON.stringify(updatedFixtures));
+        localStorage.setItem(`tff_last_auto_${activeLeagueId}`, String(Date.now()));
+      } else if (hasAmatorSync(activeLeagueId)) {
+        // ASKF Amatör ligler
+        const data = await fetchAmatorData();
+        if (!data || !data.success) {
+          throw new Error(data?.error || 'ASKF verisi alınamadı');
+        }
+
+        const groupData = activeLeagueId === 'amator_a' ? data.groups.amator_a : data.groups.amator_b;
+
+        if (groupData.standings.length > 0) {
+          const mappedStandings = mapAmatorStandingsToTeams(groupData.standings, currentLeague.teams);
+          setTffStandings(mappedStandings);
+        }
+
+        if (groupData.fixtures.length > 0) {
+          const baseFixtures: Match[] = [...currentLeague.fixtures];
+          const updatedFixtures = mapAmatorFixturesToMatches(groupData.fixtures, currentLeague.teams, baseFixtures);
+          setFixtures(updatedFixtures);
+          localStorage.setItem(`fixtures_${activeLeagueId}`, JSON.stringify(updatedFixtures));
+        }
+        localStorage.setItem(`tff_last_auto_${activeLeagueId}`, String(Date.now()));
       }
-
-      // Puan durumu doğrudan TFF'den
-      const mappedStandings = mapTFFStandingsToTeams(data.standings, currentLeague.teams, activeLeagueId);
-      setTffStandings(mappedStandings);
-
-      // Fixtures: constants'taki temiz listeyi base al — birikmiş localStorage değil
-      const baseFixtures: Match[] = [...currentLeague.fixtures];
-      const updatedFixtures = mapTFFFixturesToMatches(data.fixtures, currentLeague.teams, baseFixtures, activeLeagueId);
-      setFixtures(updatedFixtures);
-      localStorage.setItem(`fixtures_${activeLeagueId}`, JSON.stringify(updatedFixtures));
-      localStorage.setItem(`tff_last_auto_${activeLeagueId}`, String(Date.now()));
 
       const syncTime = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
       setTffLastSync(syncTime);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Bilinmeyen hata';
       setTffSyncError(message);
-      console.error('TFF sync hatası:', err);
+      console.error('Sync hatası:', err);
     } finally {
       setIsTFFSyncing(false);
     }
@@ -131,30 +156,48 @@ const App: React.FC = () => {
     setTffSyncError(null);
   }, [activeLeagueId]);
 
-  // TFF destekli ligde otomatik çek (lig açılınca, 5 dk caching)
+  // TFF/ASKF destekli ligde otomatik çek (lig açılınca)
   useEffect(() => {
-    if (!hasTFFSync(activeLeagueId)) return;
+    const isTFF = hasTFFSync(activeLeagueId);
+    const isAmator = hasAmatorSync(activeLeagueId);
+    if (!isTFF && !isAmator) return;
 
-    // Cache yok — her lig açılışında TFF'den taze veri çek
     let cancelled = false;
     (async () => {
       try {
-        const { fetchTFFData, mapTFFStandingsToTeams: mapStandings, mapTFFFixturesToMatches: mapFixtures } = await import('./services/tffService');
-        if (cancelled) return;
-        // Her zaman tam senkronizasyon: puan durumu + tüm haftaların fikstürü (1..maxHafta)
-        const data = await fetchTFFData(activeLeagueId);
-        if (cancelled || !data?.success) return;
+        if (isTFF) {
+          const { fetchTFFData, mapTFFStandingsToTeams: mapStandings, mapTFFFixturesToMatches: mapFixtures } = await import('./services/tffService');
+          if (cancelled) return;
+          const data = await fetchTFFData(activeLeagueId);
+          if (cancelled || !data?.success) return;
 
-        // Puan durumunu TFF'den doğrudan al
-        const mappedStandings = mapStandings(data.standings, currentLeague.teams, activeLeagueId);
-        setTffStandings(mappedStandings);
+          const mappedStandings = mapStandings(data.standings, currentLeague.teams, activeLeagueId);
+          setTffStandings(mappedStandings);
 
-        // Fixtures: birikmiş localStorage DEĞİL, constants'taki temiz listeyi base al
-        // Bu sayede her sync'te sıfırdan doğru fixture listesi oluşur
-        const baseFixtures: Match[] = [...currentLeague.fixtures];
-        const updatedFixtures = mapFixtures(data.fixtures, currentLeague.teams, baseFixtures, activeLeagueId);
-        setFixtures(updatedFixtures);
-        localStorage.setItem(`fixtures_${activeLeagueId}`, JSON.stringify(updatedFixtures));
+          const baseFixtures: Match[] = [...currentLeague.fixtures];
+          const updatedFixtures = mapFixtures(data.fixtures, currentLeague.teams, baseFixtures, activeLeagueId);
+          setFixtures(updatedFixtures);
+          localStorage.setItem(`fixtures_${activeLeagueId}`, JSON.stringify(updatedFixtures));
+        } else if (isAmator) {
+          const { fetchAmatorData, mapAmatorStandingsToTeams: mapStandings, mapAmatorFixturesToMatches: mapFixtures } = await import('./services/amatorService');
+          if (cancelled) return;
+          const data = await fetchAmatorData();
+          if (cancelled || !data?.success) return;
+
+          const groupData = activeLeagueId === 'amator_a' ? data.groups.amator_a : data.groups.amator_b;
+
+          if (groupData.standings.length > 0) {
+            const mappedStandings = mapStandings(groupData.standings, currentLeague.teams);
+            setTffStandings(mappedStandings);
+          }
+
+          if (groupData.fixtures.length > 0) {
+            const baseFixtures: Match[] = [...currentLeague.fixtures];
+            const updatedFixtures = mapFixtures(groupData.fixtures, currentLeague.teams, baseFixtures);
+            setFixtures(updatedFixtures);
+            localStorage.setItem(`fixtures_${activeLeagueId}`, JSON.stringify(updatedFixtures));
+          }
+        }
 
         const syncTime = new Date().toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
         setTffLastSync(syncTime);
@@ -351,7 +394,7 @@ const App: React.FC = () => {
                                 <Image className="w-4 h-4 text-green-600" />
                                 Tavuk Evi Eflani Spor Puan Durumu
                             </button>
-                            {hasTFFSync(activeLeagueId) && (
+                            {(hasTFFSync(activeLeagueId) || hasAmatorSync(activeLeagueId)) && (
                               <button
                                 onClick={() => { handleTFFSync(); setIsSettingsOpen(false); }}
                                 disabled={isTFFSyncing}
@@ -359,9 +402,9 @@ const App: React.FC = () => {
                               >
                                 <RefreshCw className={`w-4 h-4 text-green-600 ${isTFFSyncing ? 'animate-spin' : ''}`} />
                                 <div className="flex flex-col">
-                                  <span>{isTFFSyncing ? 'Güncelleniyor…' : 'TFF\'den Otomatik Güncelle'}</span>
+                                  <span>{isTFFSyncing ? 'Güncelleniyor…' : hasAmatorSync(activeLeagueId) ? 'ASKF\'den Otomatik Güncelle' : 'TFF\'den Otomatik Güncelle'}</span>
                                   {tffLastSync && (
-                                    <span className="text-xs text-green-600 font-medium">✓ TFF Aktif — Son: {tffLastSync}</span>
+                                    <span className="text-xs text-green-600 font-medium">✓ {hasAmatorSync(activeLeagueId) ? 'ASKF' : 'TFF'} Aktif — Son: {tffLastSync}</span>
                                   )}
                                   {tffSyncError && !tffLastSync && (
                                     <span className="text-xs text-red-500 font-medium">Bağlantı hatası</span>
@@ -439,13 +482,13 @@ const App: React.FC = () => {
             {/* Right Column: Standings */}
             <div className={`lg:col-span-7 h-full overflow-y-auto pb-20 lg:pb-0 px-2 lg:px-0 pt-2 lg:pt-8 ${activeTab === 'standings' ? 'block' : 'hidden lg:block'}`}>
                 {/* Action Buttons */}
-                {/* Action bar: sadece TFF Güncelle butonu */}
+                {/* Action bar: TFF / ASKF Güncelle butonu */}
                 <div className="flex items-center justify-end mb-4 gap-2 shrink-0">
-                    {hasTFFSync(activeLeagueId) && (
+                    {(hasTFFSync(activeLeagueId) || hasAmatorSync(activeLeagueId)) && (
                       <button
                         onClick={handleTFFSync}
                         disabled={isTFFSyncing}
-                        title="TFF'den canlı güncelle"
+                        title={hasAmatorSync(activeLeagueId) ? 'ASKF\'den canlı güncelle' : 'TFF\'den canlı güncelle'}
                         className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold text-sm transition-all border shadow-sm ${
                           tffStandings
                             ? 'bg-green-50 border-green-300 text-green-700 hover:bg-green-100'
@@ -455,7 +498,7 @@ const App: React.FC = () => {
                         <RefreshCw className={`w-4 h-4 ${isTFFSyncing ? 'animate-spin' : ''}`} />
                         <div className="flex flex-col items-start leading-tight">
                           <span className="font-black text-xs tracking-wide">
-                            {isTFFSyncing ? 'Güncelleniyor…' : tffStandings ? '✓ TFF Aktif' : 'TFF Güncelle'}
+                            {isTFFSyncing ? 'Güncelleniyor…' : tffStandings ? `✓ ${hasAmatorSync(activeLeagueId) ? 'ASKF' : 'TFF'} Aktif` : `${hasAmatorSync(activeLeagueId) ? 'ASKF' : 'TFF'} Güncelle`}
                           </span>
                           {tffLastSync && !isTFFSyncing && (
                             <span className="text-[10px] font-medium opacity-70">
@@ -489,12 +532,14 @@ const App: React.FC = () => {
                         <RefreshCw className={`w-5 h-5 ${theme.iconColor}`} />
                     </div>
                     <div>
-                        <h4 className="font-bold text-slate-900 text-sm">TFF Otomatik Güncelleme</h4>
+                        <h4 className="font-bold text-slate-900 text-sm">
+                          {hasAmatorSync(activeLeagueId) ? 'ASKF' : 'TFF'} Otomatik Güncelleme
+                        </h4>
                         <p className="text-sm text-slate-600 mt-1">
-                          {hasTFFSync(activeLeagueId)
+                          {(hasTFFSync(activeLeagueId) || hasAmatorSync(activeLeagueId))
                             ? tffStandings
-                              ? `TFF verisi aktif — ${tffLastSync ? `Son güncelleme: ${tffLastSync}` : 'sayfa açılışında çekildi'}. Yeni hafta oynandıktan sonra "TFF Güncelle" butonuna basarak puan durumu ve fikstürü otomatik olarak güncelleyebilirsiniz.`
-                              : 'TFF Güncelle butonuna basarak resmi TFF verilerini otomatik çekin. Puan durumu ve fikstür aynı anda güncellenir.'
+                              ? `${hasAmatorSync(activeLeagueId) ? 'ASKF' : 'TFF'} verisi aktif — ${tffLastSync ? `Son güncelleme: ${tffLastSync}` : 'sayfa açılışında çekildi'}. Yeni hafta oynandıktan sonra "${hasAmatorSync(activeLeagueId) ? 'ASKF' : 'TFF'} Güncelle" butonuna basarak puan durumu ve fikstürü otomatik olarak güncelleyebilirsiniz.`
+                              : `${hasAmatorSync(activeLeagueId) ? 'ASKF' : 'TFF'} Güncelle butonuna basarak resmi verileri otomatik çekin. Puan durumu ve fikstür aynı anda güncellenir.`
                             : 'Fikstür sekmesinden maç sonuçlarını girdiğinizde puan durumu anlık olarak yeniden hesaplanır.'
                           }
                         </p>

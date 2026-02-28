@@ -10,10 +10,10 @@ interface LeagueTFFConfig {
 }
 
 const LEAGUE_TFF_CONFIG: Record<string, LeagueTFFConfig> = {
-  // Nesine 3. Lig Grup 3 — 16 takım, 30 hafta
-  'karabuk': { grupID: '2785', pageID: '971',  maxHafta: 30, allowAddFromTFF: false },
-  // Bölgesel Amatör Lig — 16 takım, 26 hafta
-  'eflani':  { grupID: '3304', pageID: '1596', maxHafta: 26, allowAddFromTFF: true  },
+  // Nesine 3. Lig Grup 3 — 16 takım, 34 haftaya kadar taranır (TFF bazen ekstra hafta ekler)
+  'karabuk': { grupID: '2785', pageID: '971',  maxHafta: 34, allowAddFromTFF: true },
+  // Bölgesel Amatör Lig — 14 takım, 26 hafta (güvenlik marjı: 30)
+  'eflani':  { grupID: '3304', pageID: '1596', maxHafta: 30, allowAddFromTFF: true  },
 };
 
 // ─── KARABÜK 3. LİG TAKIM HARİTASI ─────────────────────────────────────────────
@@ -52,10 +52,6 @@ const EFLANI_KULUP_MAP: Record<number, number> = {
   1930:  12,  // Yeniçağa Spor Kulübü
   95:    13,  // Bartınspor
   13706: 14,  // Kırşehir Yetişen Yıldızlar Spor Kulübü
-  3622:  15,  // Samsun Büyükşehir Belediyespor
-  2562:  16,  // Gümüşhanespor
-  16578: 15,  // Samsun Büyükşehir Belediyespor (Alternatif ID)
-  14988: 16,  // Gümüşhanespor (Alternatif ID)
 };
 
 const KULUP_MAPS: Record<string, Record<number, number>> = {
@@ -317,11 +313,10 @@ function resolveTeamId(
 
   const matched = findMatchingTeam(teamName, localTeams);
   if (matched) {
-    console.log(`[TFF Match] ${teamName} (ID: ${kulupId}) -> ${matched.name} (ID: ${matched.id})`);
     return matched.id;
   }
 
-  console.warn(`[TFF Missing] Takım eşleşmedi: ${teamName} (ID: ${kulupId})`);
+  // Silently return undefined to avoid console spam, App.tsx handles this
   return undefined;
 }
 
